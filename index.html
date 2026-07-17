@@ -9,7 +9,8 @@
                   background-color: white; /* Ensure the iframe has a white background */
                 }
 
-                * { margin: 0; padding: 0; box-sizing: border-box; }
+                /* css/style.css */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
     font-family: "Times New Roman", Times, Georgia, serif;
@@ -24,45 +25,82 @@ body {
 /* ── Header ── */
 header {
     border-bottom: 1px solid #000;
-    padding: 20px 40px;
+    padding: 22px 40px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 16px;
+    background: #fff;
 }
-.site-title { font-size: 1.6rem; font-style: italic; letter-spacing: 4px; }
+.site-title {
+    font-size: 1.7rem;
+    font-style: italic;
+    letter-spacing: 4px;
+}
 nav { display: flex; gap: 24px; flex-wrap: wrap; }
 nav a {
     color: #000;
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     padding: 4px 0;
     border-bottom: 1px solid transparent;
-    transition: border-color 0.2s;
+    transition: all 0.25s ease;
 }
-nav a:hover { border-bottom: 1px solid #000; }
+nav a:hover {
+    border-bottom: 1px solid #000;
+    font-style: italic;
+}
 nav a:visited { color: #000; }
 
 /* ── Main ── */
 main {
     flex: 1;
-    max-width: 740px;
+    max-width: 760px;
     width: 100%;
     margin: 0 auto;
     padding: 60px 40px;
 }
-h1 { font-size: 2rem; font-weight: normal; font-style: italic; margin-bottom: 8px; letter-spacing: 1px; }
-h2 { font-size: 1.3rem; font-weight: normal; font-style: italic; margin: 28px 0 8px; }
-h3 { font-size: 0.95rem; font-weight: normal; font-style: italic; margin-bottom: 8px; letter-spacing: 1px; }
+h1 {
+    font-size: 2.4rem;
+    font-weight: normal;
+    font-style: italic;
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+}
+.subtitle {
+    font-size: 0.85rem;
+    letter-spacing: 4px;
+    text-transform: lowercase;
+    margin-bottom: 18px;
+    color: #333;
+    font-style: italic;
+}
+h2 {
+    font-size: 1.25rem;
+    font-weight: normal;
+    font-style: italic;
+    margin: 32px 0 12px;
+    letter-spacing: 1px;
+}
+h3 {
+    font-size: 0.95rem;
+    font-weight: normal;
+    font-style: italic;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
 hr { border: none; border-top: 1px solid #000; margin: 24px 0; }
 hr.double { border: none; border-top: 3px double #000; }
 p { font-size: 1rem; margin-bottom: 16px; }
-.small { font-size: 0.85rem; color: #333; }
-.lead { font-size: 1.1rem; font-style: italic; }
+.small { font-size: 0.85rem; color: #333; font-style: italic; }
+.lead {
+    font-size: 1.15rem;
+    font-style: italic;
+}
 
-a { color: #000; }
-a:visited { color: #551A8B; }
+a { color: #000; text-decoration: underline; }
+a:visited { color: #000; }
 
 .section { margin-bottom: 56px; }
 .section-title {
@@ -72,23 +110,35 @@ a:visited { color: #551A8B; }
     text-transform: uppercase;
     margin-bottom: 16px;
 }
-.ornament { text-align: center; font-size: 1.2rem; letter-spacing: 8px; margin: 10px 0; }
+.ornament {
+    text-align: center;
+    font-size: 1.3rem;
+    letter-spacing: 12px;
+    margin: 10px 0;
+    color: #000;
+}
 
 /* ── Info table ── */
 .info-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
-    margin-top: 16px;
+    margin-top: 20px;
 }
 .info-table tr { border-bottom: 1px dotted #999; }
 .info-table tr:last-child { border-bottom: none; }
-.info-table td { padding: 8px 0; vertical-align: top; }
+.info-table td { padding: 10px 0; vertical-align: top; }
 .info-table td:first-child {
     font-style: italic;
     color: #555;
-    width: 160px;
+    width: 170px;
     padding-right: 16px;
+}
+.status-active {
+    font-style: italic;
+}
+.live {
+    font-style: italic;
 }
 
 /* ── Cards ── */
@@ -98,61 +148,111 @@ a:visited { color: #551A8B; }
     gap: 16px;
     margin-top: 20px;
 }
-.card { border: 1px solid #000; padding: 18px; }
-.card h3 { margin-bottom: 6px; }
+.card {
+    border: 1px solid #000;
+    padding: 18px;
+    background: #fff;
+    transition: all 0.25s ease;
+}
+.card:hover {
+    background: #fafafa;
+}
+.card h3 { }
 .card p { font-size: 0.85rem; color: #333; margin-bottom: 0; }
 @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
 
-/* ── Discord Box ── */
-.discord-box {
-    border: 1px solid #000;
-    padding: 24px;
-    text-align: center;
-    margin: 24px 0;
+/* ── Server Cards ── */
+.server-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-top: 20px;
 }
-.discord-box a { text-decoration: underline; }
+.server-card {
+    border: 1px solid #000;
+    padding: 28px;
+    background: #fff;
+    position: relative;
+}
+.server-header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    border-bottom: 1px dotted #999;
+    padding-bottom: 14px;
+}
+.server-header h3 {
+    font-size: 1.4rem;
+    margin-bottom: 0;
+    font-style: italic;
+}
+.server-role {
+    font-size: 0.72rem;
+    letter-spacing: 3px;
+    color: #666;
+    text-transform: uppercase;
+}
+.server-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 18px;
+    padding: 14px 0;
+}
+.stat { display: flex; flex-direction: column; }
+.stat-label {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    font-style: italic;
+}
+.stat-value {
+    font-size: 1.7rem;
+    font-weight: normal;
+    color: #000;
+    font-family: "Courier New", Courier, monospace;
+    letter-spacing: 1px;
+}
+.stat-value.updating {
+    animation: pulse 0.5s ease-in-out;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+.server-link {
+    text-align: right;
+    padding-top: 12px;
+    border-top: 1px dotted #999;
+}
+.server-link a {
+    font-style: italic;
+    letter-spacing: 1px;
+    font-size: 0.9rem;
+}
 
 /* ── Members ── */
 .member-row {
     display: flex;
     justify-content: space-between;
-    padding: 10px 0;
+    padding: 12px 0;
     border-bottom: 1px dotted #ccc;
     font-size: 0.9rem;
     flex-wrap: wrap;
     gap: 4px 16px;
 }
 .member-row:last-child { border-bottom: none; }
-.member-name { font-weight: normal; }
-.member-role { font-style: italic; color: #555; }
+.member-name { font-style: italic; }
+.member-role { color: #555; font-size: 0.85rem; font-style: italic; }
 .member-note {
     font-family: "Courier New", Courier, monospace;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #666;
-}
-
-/* ── Rules ── */
-.rules-list {
-    list-style: none;
-    counter-reset: rule;
-    padding: 0;
-}
-.rules-list li {
-    counter-increment: rule;
-    padding: 10px 0;
-    border-bottom: 1px dotted #999;
-    font-size: 0.9rem;
-    display: flex;
-    gap: 14px;
-    align-items: baseline;
-}
-.rules-list li:last-child { border-bottom: none; }
-.rules-list li::before {
-    content: counter(rule, upper-roman) ".";
-    font-family: "Courier New", Courier, monospace;
-    font-size: 0.85rem;
-    color: #666;
-    min-width: 36px;
+    letter-spacing: 1px;
 }
 
 /* ── Updates ── */
@@ -162,14 +262,14 @@ a:visited { color: #551A8B; }
     border-bottom: 1px dotted #999;
     font-size: 0.9rem;
     display: flex;
-    gap: 20px;
+    gap: 22px;
     align-items: baseline;
 }
 .update-list li:last-child { border-bottom: none; }
 .update-date {
     font-family: "Courier New", Courier, monospace;
     font-size: 0.8rem;
-    color: #666;
+    color: #333;
     min-width: 90px;
 }
 .update-tag {
@@ -182,21 +282,6 @@ a:visited { color: #551A8B; }
     letter-spacing: 1px;
 }
 
-/* ── Projects ── */
-.project-item {
-    border-left: 3px solid #000;
-    padding: 6px 0 6px 16px;
-    margin: 14px 0;
-}
-.project-item h3 { margin-bottom: 4px; }
-.project-item p { font-size: 0.85rem; color: #333; margin-bottom: 0; }
-.project-status {
-    font-family: "Courier New", Courier, monospace;
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    color: #666;
-}
-
 /* ── Footer ── */
 footer {
     border-top: 1px solid #000;
@@ -204,24 +289,27 @@ footer {
     text-align: center;
     font-size: 0.75rem;
     color: #666;
+    font-style: italic;
+    background: #fff;
 }
-.credits { margin-top: 8px; font-size: 0.8rem; color: #444; line-height: 1.8; }
-.credits strong { font-weight: normal; font-style: italic; }
+.credits { margin-top: 12px; font-size: 0.85rem; color: #000; line-height: 1.8; }
+.credits strong { font-style: italic; }
 .counter {
     font-family: "Courier New", Courier, monospace;
     font-size: 0.8rem;
     border: 1px solid #000;
     display: inline-block;
     padding: 3px 10px;
-    margin-top: 12px;
-    background: #f5f5f5;
+    margin-top: 14px;
+    background: #fff;
 }
 
 
               </style>
                         </head>
                         <body>
-                            <!DOCTYPE html>
+                            <!-- index.html -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -235,61 +323,113 @@ footer {
         <nav>
             <a href="#home">home</a>
             <a href="#about">about</a>
-            <a href="#community">community</a>
-            <a href="#projects">projects</a>
-            <a href="#rules">rules</a>
+            <a href="#servers">servers</a>
+            <a href="#structure">structure</a>
             <a href="#updates">updates</a>
-            <a href="/join">discord</a>
+            <a href="/join">join</a>
         </nav>
     </header>
 
     <main>
         <section id="home" class="section">
             <div class="ornament">❦ ❦ ❦</div>
-            <h1>Welcome to Kura.</h1>
+            <h1>Kura.</h1>
+            <div class="subtitle">— a discord raid organization —</div>
             <hr class="double">
-            <p class="lead">A community of over a thousand, quietly growing.</p>
-            <p class="small">Take your time. Look around.</p>
+            <p class="lead">We are not here to be friendly.</p>
+            <p class="small">This is a raid group. You have been warned.</p>
 
             <table class="info-table">
-                <tr><td>Name</td><td>Kura (S.pam network)</td></tr>
-                <tr><td>Type</td><td>Discord community</td></tr>
+                <tr><td>Name</td><td>Kura</td></tr>
+                <tr><td>Type</td><td>Raid / Griefing Organization</td></tr>
                 <tr><td>Founded</td><td>2025</td></tr>
-                <tr><td>Members</td><td>1,000+ (still growing)</td></tr>
-                <tr><td>Language</td><td>日本語 / English</td></tr>
-                <tr><td>Platform</td><td>Discord</td></tr>
+                <tr><td>Main Server</td><td>Kura</td></tr>
+                <tr><td>Dev Division</td><td>!Kr Dev</td></tr>
+                <tr><td>Total Members</td><td id="total-members" class="live">— loading —</td></tr>
+                <tr><td>Status</td><td><span class="status-active">● Active</span></td></tr>
             </table>
         </section>
 
         <section id="about" class="section">
             <p class="section-title">— About —</p>
             <hr>
-            <p><strong>Kura</strong> is a large Discord-based community, organized by zumi. What began as a small circle has grown into a network of more than a thousand members, and it continues to expand.</p>
-            <p>We move at our own pace. We value what we build together.</p>
+            <p><strong>Kura</strong> is a Discord raid organization led by zumi. We move fast, we move quiet, and we leave nothing standing.</p>
+            <p>We do not play nice. We do not build communities. We dismantle them.</p>
 
-            <h2>Our approach</h2>
+            <h2>Our Philosophy</h2>
             <div class="card-grid">
                 <div class="card">
-                    <h3>Community</h3>
-                    <p>A large, active network. Over a thousand members and still growing every day.</p>
+                    <h3>Damage</h3>
+                    <p>How much impact we can inflict on a target. That is the only metric.</p>
                 </div>
                 <div class="card">
-                    <h3>Focus</h3>
-                    <p>Building connections, sharing tools, and supporting each other's projects.</p>
+                    <h3>Engineering</h3>
+                    <p>Build superior tools. Better bots, faster raids, cleaner execution.</p>
                 </div>
                 <div class="card">
-                    <h3>Values</h3>
-                    <p>Loyalty, craft, and a shared sense of direction. Strength in numbers.</p>
+                    <h3>Enjoyment</h3>
+                    <p>If it is not fun, it is not worth doing. Chaos is the point.</p>
                 </div>
                 <div class="card">
-                    <h3>Pace</h3>
-                    <p>Slow and steady. We don't rush — we grow carefully and deliberately.</p>
+                    <h3>Patience</h3>
+                    <p>No rush. Slow infiltration. Strike when they have forgotten we exist.</p>
                 </div>
             </div>
+        </section>
 
+        <section id="servers" class="section">
+            <p class="section-title">— Servers —</p>
+            <hr>
+            <p class="small">Live member counts. Updated every second.</p>
+
+            <div class="server-list">
+                <div class="server-card">
+                    <div class="server-header">
+                        <h3>Kura</h3>
+                        <span class="server-role">[ Main Hub ]</span>
+                    </div>
+                    <div class="server-stats">
+                        <div class="stat">
+                            <span class="stat-label">Members</span>
+                            <span class="stat-value" id="count-D6PGKFKZEq">—</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Online</span>
+                            <span class="stat-value" id="online-D6PGKFKZEq">—</span>
+                        </div>
+                    </div>
+                    <div class="server-link">
+                        <a href="/join">→ Join Kura</a>
+                    </div>
+                </div>
+
+                <div class="server-card">
+                    <div class="server-header">
+                        <h3>!Kr Dev</h3>
+                        <span class="server-role">[ Dev Division ]</span>
+                    </div>
+                    <div class="server-stats">
+                        <div class="stat">
+                            <span class="stat-label">Members</span>
+                            <span class="stat-value" id="count-3aRbaQkuU4">—</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Online</span>
+                            <span class="stat-value" id="online-3aRbaQkuU4">—</span>
+                        </div>
+                    </div>
+                    <div class="server-link">
+                        <a href="https://discord.gg/3aRbaQkuU4" target="_blank" rel="noopener">→ Join !Kr Dev</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="structure" class="section">
+            <p class="section-title">— Structure —</p>
             <hr>
 
-            <h2>Members</h2>
+            <h2>Key Members</h2>
             <div>
                 <div class="member-row">
                     <span class="member-name">zumi</span>
@@ -301,98 +441,35 @@ footer {
                     <span class="member-role">— Developer</span>
                     <span class="member-note">joined 2025.06.13</span>
                 </div>
-                <div class="member-row">
-                    <span class="member-name">+ 1,000 others</span>
-                    <span class="member-role">— Community</span>
-                    <span class="member-note">ongoing</span>
-                </div>
             </div>
-        </section>
 
-        <section id="community" class="section">
-            <p class="section-title">— Community —</p>
             <hr>
-            <p>Kura lives on Discord. The server is where everything happens — conversation, collaboration, announcements, and the quiet daily rhythm of the group.</p>
 
-            <table class="info-table">
-                <tr><td>Server</td><td>S.pam / Kura</td></tr>
-                <tr><td>Size</td><td>1,000+ members</td></tr>
-                <tr><td>Status</td><td>Active and growing</td></tr>
-                <tr><td>Invite</td><td><a href="/join">/join</a></td></tr>
-            </table>
-
-            <div class="discord-box">
-                <p class="small">Come see it for yourself.</p>
-                <p><a href="/join">→ Enter the Discord</a></p>
-            </div>
-        </section>
-
-        <section id="projects" class="section">
-            <p class="section-title">— Projects —</p>
-            <hr>
-            <p class="small">What we are working on at the moment.</p>
-
-            <div class="project-item">
-                <h3>Official Site</h3>
-                <span class="project-status">[ in progress ]</span>
-                <p>The very page you are reading. Built from scratch, maintained by hand.</p>
-            </div>
-            <div class="project-item">
-                <h3>Discord Community</h3>
-                <span class="project-status">[ active ]</span>
-                <p>A thousand-strong Discord space. Conversations, ideas, shared work.</p>
-            </div>
-            <div class="project-item">
-                <h3>Community Tools</h3>
-                <span class="project-status">[ planning ]</span>
-                <p>Custom bots and utilities built by Klyn for the community.</p>
-            </div>
-            <div class="project-item">
-                <h3>Next Project</h3>
-                <span class="project-status">[ planning ]</span>
-                <p>Undisclosed. Details will appear here when the time is right.</p>
-            </div>
-        </section>
-
-        <section id="rules" class="section">
-            <p class="section-title">— Community Rules —</p>
-            <hr>
-            <p class="small">A few simple things we ask of everyone in our space.</p>
-
-            <ol class="rules-list">
-                <li>Be respectful within the community. Internal conflict weakens everyone.</li>
-                <li>No harassment or personal attacks between members.</li>
-                <li>Keep personal information private — yours and others'.</li>
-                <li>Follow the directions of the staff. Final decisions rest with the owner.</li>
-                <li>Use the right channels for the right topics.</li>
-                <li>What happens in the server stays in the server.</li>
-                <li>If you see a problem, report it to staff — don't escalate it.</li>
-            </ol>
-        </section>
-
-        <section id="updates" class="section">
-            <p class="section-title">— Updates —</p>
-            <hr>
+            <h2>Operations Log</h2>
             <ul class="update-list">
                 <li>
                     <span class="update-date">2025.07.18</span>
-                    <span>Site restructured into multiple files. New sections added.<span class="update-tag">site</span></span>
+                    <span>Live server tracking deployed on site.<span class="update-tag">sys</span></span>
                 </li>
                 <li>
                     <span class="update-date">2025.07.10</span>
-                    <span>Community surpassed 1,000 members.</span>
+                    <span>Main server surpassed 1,000 members. Growth continues.</span>
                 </li>
                 <li>
                     <span class="update-date">2025.06.15</span>
-                    <span>Official site launched.<span class="update-tag">new</span></span>
+                    <span>Official site deployed.<span class="update-tag">new</span></span>
                 </li>
                 <li>
                     <span class="update-date">2025.06.13</span>
-                    <span>Klyn joined as Developer.</span>
+                    <span>Klyn joined as Developer. !Kr Dev formed.</span>
                 </li>
                 <li>
-                    <span class="update-date">2025.——.——</span>
-                    <span>Kura was founded by zumi. Date unknown.</span>
+                    <span class="update-date">2025.06.08</span>
+                    <span>Kura founded by zumi.</span>
+                </li>
+                <li>
+                    <span class="update-date">——.——.——</span>
+                    <span>Main server created. Date unknown.</span>
                 </li>
             </ul>
         </section>
@@ -401,8 +478,11 @@ footer {
     </main>
 
     <footer>
-        <p>© MMXXV Kura — Best viewed with any browser</p>
-        <p><a href="/join">Discord</a></p>
+        <p>© MMXXV Kura — enter at your own risk</p>
+        <p>
+            <a href="/join">Kura</a> ·
+            <a href="https://discord.gg/3aRbaQkuU4" target="_blank" rel="noopener">!Kr Dev</a>
+        </p>
         <div class="credits">
             <p>Owner: <strong>zumi</strong></p>
             <p>Developer: <strong>Klyn</strong></p>
@@ -418,13 +498,17 @@ footer {
 
 
               <script>
-                              (function () {
-    // /join → Discord redirect
+                              // js/main.js
+(function () {
+    'use strict';
+
+    // ── /join redirect ──
     if (window.location.pathname === '/join') {
         window.location.href = 'https://discord.gg/D6PGKFKZEq';
+        return;
     }
 
-    // Visitor counter
+    // ── Visitor counter ──
     const counterEl = document.getElementById('counter');
     if (counterEl) {
         let count = 42;
@@ -435,7 +519,94 @@ footer {
         counterEl.textContent = String(count).padStart(6, '0');
     }
 
-    // Smooth-scroll fallback for older browsers
+    // ── Live Discord member tracking ──
+    const INVITES = [
+        { code: 'D6PGKFKZEq', url: 'https://discord.gg/D6PGKFKZEq' },
+        { code: '3aRbaQkuU4', url: 'https://discord.gg/3aRbaQkuU4' }
+    ];
+
+    const lastKnown = {};
+
+    function formatCount(num) {
+        if (num === null || num === undefined) return '—';
+        return num.toLocaleString('en-US');
+    }
+
+    function setCount(code, members, online) {
+        const countEl = document.getElementById('count-' + code);
+        const onlineEl = document.getElementById('online-' + code);
+
+        if (countEl) {
+            const newText = formatCount(members);
+            if (countEl.textContent !== newText) {
+                countEl.textContent = newText;
+                countEl.classList.add('updating');
+                setTimeout(() => countEl.classList.remove('updating'), 500);
+            }
+        }
+        if (onlineEl) {
+            onlineEl.textContent = formatCount(online);
+        }
+
+        lastKnown[code] = { members: members, online: online };
+        updateTotal();
+    }
+
+    function updateTotal() {
+        const totalEl = document.getElementById('total-members');
+        if (!totalEl) return;
+        let total = 0;
+        for (const key in lastKnown) {
+            if (lastKnown[key] && lastKnown[key].members) {
+                total += lastKnown[key].members;
+            }
+        }
+        if (total > 0) {
+            totalEl.textContent = formatCount(total) + '+';
+        } else {
+            totalEl.textContent = '—';
+        }
+    }
+
+    async function fetchInvite(code) {
+        try {
+            const res = await fetch('https://discord.com/api/v10/invites/' + code + '?with_counts=true');
+            if (!res.ok) {
+                console.warn('Invite fetch failed:', code, res.status);
+                return null;
+            }
+            const data = await res.json();
+            return {
+                members: data.approximate_member_count,
+                online: data.approximate_presence_count
+            };
+        } catch (err) {
+            console.warn('Invite fetch error:', code, err);
+            return null;
+        }
+    }
+
+    let pollIndex = 0;
+
+    async function pollNext() {
+        const invite = INVITES[pollIndex];
+        const result = await fetchInvite(invite.code);
+        if (result) {
+            setCount(invite.code, result.members, result.online);
+        }
+        pollIndex = (pollIndex + 1) % INVITES.length;
+    }
+
+    (async function init() {
+        for (const invite of INVITES) {
+            const result = await fetchInvite(invite.code);
+            if (result) {
+                setCount(invite.code, result.members, result.online);
+            }
+        }
+        setInterval(pollNext, 1000);
+    })();
+
     document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
         anchor.addEventListener('click', function (e) {
             const target = document.querySelector(this.getAttribute('href'));
