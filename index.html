@@ -1,217 +1,233 @@
-<!DOCTYPE html>
+
+                        <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  background-color: white; /* Ensure the iframe has a white background */
+                }
+
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+    font-family: "Times New Roman", Times, Georgia, serif;
+    background: #ffffff;
+    color: #000000;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.6;
+}
+
+/* ── Header ── */
+header {
+    border-bottom: 1px solid #000;
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.site-title { font-size: 1.6rem; font-style: italic; letter-spacing: 4px; }
+nav { display: flex; gap: 24px; flex-wrap: wrap; }
+nav a {
+    color: #000;
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 4px 0;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+nav a:hover { border-bottom: 1px solid #000; }
+nav a:visited { color: #000; }
+
+/* ── Main ── */
+main {
+    flex: 1;
+    max-width: 740px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 60px 40px;
+}
+h1 { font-size: 2rem; font-weight: normal; font-style: italic; margin-bottom: 8px; letter-spacing: 1px; }
+h2 { font-size: 1.3rem; font-weight: normal; font-style: italic; margin: 28px 0 8px; }
+h3 { font-size: 0.95rem; font-weight: normal; font-style: italic; margin-bottom: 8px; letter-spacing: 1px; }
+hr { border: none; border-top: 1px solid #000; margin: 24px 0; }
+hr.double { border: none; border-top: 3px double #000; }
+p { font-size: 1rem; margin-bottom: 16px; }
+.small { font-size: 0.85rem; color: #333; }
+.lead { font-size: 1.1rem; font-style: italic; }
+
+a { color: #000; }
+a:visited { color: #551A8B; }
+
+.section { margin-bottom: 56px; }
+.section-title {
+    font-size: 1.1rem;
+    font-weight: normal;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+.ornament { text-align: center; font-size: 1.2rem; letter-spacing: 8px; margin: 10px 0; }
+
+/* ── Info table ── */
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-top: 16px;
+}
+.info-table tr { border-bottom: 1px dotted #999; }
+.info-table tr:last-child { border-bottom: none; }
+.info-table td { padding: 8px 0; vertical-align: top; }
+.info-table td:first-child {
+    font-style: italic;
+    color: #555;
+    width: 160px;
+    padding-right: 16px;
+}
+
+/* ── Cards ── */
+.card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+}
+.card { border: 1px solid #000; padding: 18px; }
+.card h3 { margin-bottom: 6px; }
+.card p { font-size: 0.85rem; color: #333; margin-bottom: 0; }
+@media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+
+/* ── Discord Box ── */
+.discord-box {
+    border: 1px solid #000;
+    padding: 24px;
+    text-align: center;
+    margin: 24px 0;
+}
+.discord-box a { text-decoration: underline; }
+
+/* ── Members ── */
+.member-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px dotted #ccc;
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+}
+.member-row:last-child { border-bottom: none; }
+.member-name { font-weight: normal; }
+.member-role { font-style: italic; color: #555; }
+.member-note {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.75rem;
+    color: #666;
+}
+
+/* ── Rules ── */
+.rules-list {
+    list-style: none;
+    counter-reset: rule;
+    padding: 0;
+}
+.rules-list li {
+    counter-increment: rule;
+    padding: 10px 0;
+    border-bottom: 1px dotted #999;
+    font-size: 0.9rem;
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+}
+.rules-list li:last-child { border-bottom: none; }
+.rules-list li::before {
+    content: counter(rule, upper-roman) ".";
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.85rem;
+    color: #666;
+    min-width: 36px;
+}
+
+/* ── Updates ── */
+.update-list { list-style: none; padding: 0; }
+.update-list li {
+    padding: 14px 0;
+    border-bottom: 1px dotted #999;
+    font-size: 0.9rem;
+    display: flex;
+    gap: 20px;
+    align-items: baseline;
+}
+.update-list li:last-child { border-bottom: none; }
+.update-date {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.8rem;
+    color: #666;
+    min-width: 90px;
+}
+.update-tag {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.7rem;
+    border: 1px solid #000;
+    padding: 1px 6px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ── Projects ── */
+.project-item {
+    border-left: 3px solid #000;
+    padding: 6px 0 6px 16px;
+    margin: 14px 0;
+}
+.project-item h3 { margin-bottom: 4px; }
+.project-item p { font-size: 0.85rem; color: #333; margin-bottom: 0; }
+.project-status {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: #666;
+}
+
+/* ── Footer ── */
+footer {
+    border-top: 1px solid #000;
+    padding: 24px 40px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #666;
+}
+.credits { margin-top: 8px; font-size: 0.8rem; color: #444; line-height: 1.8; }
+.credits strong { font-weight: normal; font-style: italic; }
+.counter {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.8rem;
+    border: 1px solid #000;
+    display: inline-block;
+    padding: 3px 10px;
+    margin-top: 12px;
+    background: #f5f5f5;
+}
+
+
+              </style>
+                        </head>
+                        <body>
+                            <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kura</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body {
-            font-family: "Times New Roman", Times, Georgia, serif;
-            background: #ffffff;
-            color: #000000;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            line-height: 1.6;
-        }
-
-        /* ── Header ── */
-        header {
-            border-bottom: 1px solid #000;
-            padding: 20px 40px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-        .site-title { font-size: 1.6rem; font-style: italic; letter-spacing: 4px; }
-        nav { display: flex; gap: 24px; flex-wrap: wrap; }
-        nav a {
-            color: #000;
-            text-decoration: none;
-            font-size: 0.9rem;
-            padding: 4px 0;
-            border-bottom: 1px solid transparent;
-            transition: border-color 0.2s;
-        }
-        nav a:hover { border-bottom: 1px solid #000; }
-        nav a:visited { color: #000; }
-
-        /* ── Main ── */
-        main {
-            flex: 1;
-            max-width: 740px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 60px 40px;
-        }
-        h1 { font-size: 2rem; font-weight: normal; font-style: italic; margin-bottom: 8px; letter-spacing: 1px; }
-        h2 { font-size: 1.3rem; font-weight: normal; font-style: italic; margin: 28px 0 8px; }
-        h3 { font-size: 0.95rem; font-weight: normal; font-style: italic; margin-bottom: 8px; letter-spacing: 1px; }
-        hr { border: none; border-top: 1px solid #000; margin: 24px 0; }
-        hr.double { border: none; border-top: 3px double #000; }
-        p { font-size: 1rem; margin-bottom: 16px; }
-        .small { font-size: 0.85rem; color: #333; }
-        .lead { font-size: 1.1rem; font-style: italic; }
-
-        .section { margin-bottom: 56px; }
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: normal;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            margin-bottom: 16px;
-        }
-        .ornament { text-align: center; font-size: 1.2rem; letter-spacing: 8px; margin: 10px 0; }
-
-        /* ── Info table ── */
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-            margin-top: 16px;
-        }
-        .info-table tr { border-bottom: 1px dotted #999; }
-        .info-table tr:last-child { border-bottom: none; }
-        .info-table td { padding: 8px 0; vertical-align: top; }
-        .info-table td:first-child {
-            font-style: italic;
-            color: #555;
-            width: 160px;
-            padding-right: 16px;
-        }
-
-        /* ── Cards ── */
-        .card-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-top: 20px;
-        }
-        .card {
-            border: 1px solid #000;
-            padding: 18px;
-        }
-        .card h3 { margin-bottom: 6px; }
-        .card p { font-size: 0.85rem; color: #333; margin-bottom: 0; }
-        @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
-
-        /* ── Discord Box ── */
-        .discord-box {
-            border: 1px solid #000;
-            padding: 24px;
-            text-align: center;
-            margin: 24px 0;
-        }
-        .discord-box a { color: #000; text-decoration: underline; }
-        .discord-box a:visited { color: #551A8B; }
-
-        /* ── Members ── */
-        .member-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px dotted #ccc;
-            font-size: 0.9rem;
-            flex-wrap: wrap;
-            gap: 4px 16px;
-        }
-        .member-row:last-child { border-bottom: none; }
-        .member-name { font-weight: normal; }
-        .member-role { font-style: italic; color: #555; }
-        .member-note { font-family: "Courier New", Courier, monospace; font-size: 0.75rem; color: #666; }
-
-        /* ── Rules ── */
-        .rules-list {
-            list-style: none;
-            counter-reset: rule;
-            padding: 0;
-        }
-        .rules-list li {
-            counter-increment: rule;
-            padding: 10px 0;
-            border-bottom: 1px dotted #999;
-            font-size: 0.9rem;
-            display: flex;
-            gap: 14px;
-            align-items: baseline;
-        }
-        .rules-list li:last-child { border-bottom: none; }
-        .rules-list li::before {
-            content: counter(rule, upper-roman) ".";
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.85rem;
-            color: #666;
-            min-width: 36px;
-        }
-
-        /* ── Updates ── */
-        .update-list { list-style: none; padding: 0; }
-        .update-list li {
-            padding: 14px 0;
-            border-bottom: 1px dotted #999;
-            font-size: 0.9rem;
-            display: flex;
-            gap: 20px;
-            align-items: baseline;
-        }
-        .update-list li:last-child { border-bottom: none; }
-        .update-date {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.8rem;
-            color: #666;
-            min-width: 90px;
-        }
-        .update-tag {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.7rem;
-            border: 1px solid #000;
-            padding: 1px 6px;
-            margin-left: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* ── Projects ── */
-        .project-item {
-            border-left: 3px solid #000;
-            padding: 6px 0 6px 16px;
-            margin: 14px 0;
-        }
-        .project-item h3 { margin-bottom: 4px; }
-        .project-item p { font-size: 0.85rem; color: #333; margin-bottom: 0; }
-        .project-status {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.7rem;
-            letter-spacing: 1px;
-            color: #666;
-        }
-
-        /* ── Footer ── */
-        footer {
-            border-top: 1px solid #000;
-            padding: 24px 40px;
-            text-align: center;
-            font-size: 0.75rem;
-            color: #666;
-        }
-        footer a { color: #000; text-decoration: underline; }
-        footer a:visited { color: #551A8B; }
-        .credits { margin-top: 8px; font-size: 0.8rem; color: #444; line-height: 1.8; }
-        .credits strong { font-weight: normal; font-style: italic; }
-        .counter {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.8rem;
-            border: 1px solid #000;
-            display: inline-block;
-            padding: 3px 10px;
-            margin-top: 12px;
-            background: #f5f5f5;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <header>
@@ -219,6 +235,7 @@
         <nav>
             <a href="#home">home</a>
             <a href="#about">about</a>
+            <a href="#community">community</a>
             <a href="#projects">projects</a>
             <a href="#rules">rules</a>
             <a href="#updates">updates</a>
@@ -231,14 +248,14 @@
             <div class="ornament">❦ ❦ ❦</div>
             <h1>Welcome to Kura.</h1>
             <hr class="double">
-            <p class="lead">A small organization, quietly building something of its own.</p>
+            <p class="lead">A community of over a thousand, quietly growing.</p>
             <p class="small">Take your time. Look around.</p>
 
             <table class="info-table">
-                <tr><td>Name</td><td>Kura</td></tr>
-                <tr><td>Type</td><td>Independent online organization</td></tr>
-                <tr><td>Founded</td><td>June 2025</td></tr>
-                <tr><td>Members</td><td>2 (and growing slowly)</td></tr>
+                <tr><td>Name</td><td>Kura (S.pam network)</td></tr>
+                <tr><td>Type</td><td>Discord community</td></tr>
+                <tr><td>Founded</td><td>2025</td></tr>
+                <tr><td>Members</td><td>1,000+ (still growing)</td></tr>
                 <tr><td>Language</td><td>日本語 / English</td></tr>
                 <tr><td>Platform</td><td>Discord</td></tr>
             </table>
@@ -247,26 +264,26 @@
         <section id="about" class="section">
             <p class="section-title">— About —</p>
             <hr>
-            <p><strong>Kura</strong> is a small, independent group started by zumi. We create, explore, and share — at our own pace, in our own way.</p>
-            <p>We don't chase trends. We build what feels right, and we let it grow naturally.</p>
+            <p><strong>Kura</strong> is a large Discord-based community, organized by zumi. What began as a small circle has grown into a network of more than a thousand members, and it continues to expand.</p>
+            <p>We move at our own pace. We value what we build together.</p>
 
             <h2>Our approach</h2>
             <div class="card-grid">
                 <div class="card">
-                    <h3>Philosophy</h3>
-                    <p>Slow, steady, sincere. Quality over speed. Meaning over noise.</p>
+                    <h3>Community</h3>
+                    <p>A large, active network. Over a thousand members and still growing every day.</p>
                 </div>
                 <div class="card">
                     <h3>Focus</h3>
-                    <p>Community, creativity, and quiet craftsmanship in everything we touch.</p>
+                    <p>Building connections, sharing tools, and supporting each other's projects.</p>
                 </div>
                 <div class="card">
                     <h3>Values</h3>
-                    <p>Respect, honesty, and keeping our word. Small circle, real trust.</p>
+                    <p>Loyalty, craft, and a shared sense of direction. Strength in numbers.</p>
                 </div>
                 <div class="card">
                     <h3>Pace</h3>
-                    <p>We don't rush. If something is worth doing, it's worth doing properly.</p>
+                    <p>Slow and steady. We don't rush — we grow carefully and deliberately.</p>
                 </div>
             </div>
 
@@ -277,13 +294,36 @@
                 <div class="member-row">
                     <span class="member-name">zumi</span>
                     <span class="member-role">— Owner / Founder</span>
-                    <span class="member-note">since 2025.06</span>
+                    <span class="member-note">joined —unknown—</span>
                 </div>
                 <div class="member-row">
                     <span class="member-name">Klyn</span>
                     <span class="member-role">— Developer</span>
                     <span class="member-note">joined 2025.06.13</span>
                 </div>
+                <div class="member-row">
+                    <span class="member-name">+ 1,000 others</span>
+                    <span class="member-role">— Community</span>
+                    <span class="member-note">ongoing</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="community" class="section">
+            <p class="section-title">— Community —</p>
+            <hr>
+            <p>Kura lives on Discord. The server is where everything happens — conversation, collaboration, announcements, and the quiet daily rhythm of the group.</p>
+
+            <table class="info-table">
+                <tr><td>Server</td><td>S.pam / Kura</td></tr>
+                <tr><td>Size</td><td>1,000+ members</td></tr>
+                <tr><td>Status</td><td>Active and growing</td></tr>
+                <tr><td>Invite</td><td><a href="/join">/join</a></td></tr>
+            </table>
+
+            <div class="discord-box">
+                <p class="small">Come see it for yourself.</p>
+                <p><a href="/join">→ Enter the Discord</a></p>
             </div>
         </section>
 
@@ -298,9 +338,14 @@
                 <p>The very page you are reading. Built from scratch, maintained by hand.</p>
             </div>
             <div class="project-item">
-                <h3>Community Server</h3>
+                <h3>Discord Community</h3>
                 <span class="project-status">[ active ]</span>
-                <p>A small Discord space for members. Conversations, ideas, shared work.</p>
+                <p>A thousand-strong Discord space. Conversations, ideas, shared work.</p>
+            </div>
+            <div class="project-item">
+                <h3>Community Tools</h3>
+                <span class="project-status">[ planning ]</span>
+                <p>Custom bots and utilities built by Klyn for the community.</p>
             </div>
             <div class="project-item">
                 <h3>Next Project</h3>
@@ -315,21 +360,14 @@
             <p class="small">A few simple things we ask of everyone in our space.</p>
 
             <ol class="rules-list">
-                <li>Be respectful. Disagreement is fine; disrespect is not.</li>
-                <li>No harassment, hate speech, or targeted attacks of any kind.</li>
+                <li>Be respectful within the community. Internal conflict weakens everyone.</li>
+                <li>No harassment or personal attacks between members.</li>
                 <li>Keep personal information private — yours and others'.</li>
-                <li>No spam, scams, or unsolicited self-promotion.</li>
+                <li>Follow the directions of the staff. Final decisions rest with the owner.</li>
                 <li>Use the right channels for the right topics.</li>
-                <li>Listen to the staff. Final decisions rest with the owner.</li>
-                <li>If you see a problem, report it — don't escalate it.</li>
+                <li>What happens in the server stays in the server.</li>
+                <li>If you see a problem, report it to staff — don't escalate it.</li>
             </ol>
-
-            <hr>
-
-            <div class="discord-box">
-                <p class="small">Interested? Join the community.</p>
-                <p><a href="/join">→ Enter the Discord</a></p>
-            </div>
         </section>
 
         <section id="updates" class="section">
@@ -338,23 +376,23 @@
             <ul class="update-list">
                 <li>
                     <span class="update-date">2025.07.18</span>
-                    <span>Site restructured. Added projects, rules, and more info.<span class="update-tag">site</span></span>
+                    <span>Site restructured into multiple files. New sections added.<span class="update-tag">site</span></span>
+                </li>
+                <li>
+                    <span class="update-date">2025.07.10</span>
+                    <span>Community surpassed 1,000 members.</span>
                 </li>
                 <li>
                     <span class="update-date">2025.06.15</span>
-                    <span>Official site launched. The beginning of Kura.<span class="update-tag">new</span></span>
+                    <span>Official site launched.<span class="update-tag">new</span></span>
                 </li>
                 <li>
                     <span class="update-date">2025.06.13</span>
-                    <span>Klyn joined as Developer. Team of two, officially.</span>
+                    <span>Klyn joined as Developer.</span>
                 </li>
                 <li>
-                    <span class="update-date">2025.06.08</span>
-                    <span>Kura was founded by zumi.</span>
-                </li>
-                <li>
-                    <span class="update-date">——.——.——</span>
-                    <span>Discord server opened. Date unknown.</span>
+                    <span class="update-date">2025.——.——</span>
+                    <span>Kura was founded by zumi. Date unknown.</span>
                 </li>
             </ul>
         </section>
@@ -374,17 +412,43 @@
         </div>
     </footer>
 
-    <script>
-        if (window.location.pathname === '/join') {
-            window.location.href = 'https://discord.gg/D6PGKFKZEq';
-        }
+    <script src="js/main.js"></script>
+</body>
+</html>
 
+
+              <script>
+                              (function () {
+    // /join → Discord redirect
+    if (window.location.pathname === '/join') {
+        window.location.href = 'https://discord.gg/D6PGKFKZEq';
+    }
+
+    // Visitor counter
+    const counterEl = document.getElementById('counter');
+    if (counterEl) {
         let count = 42;
         const saved = localStorage.getItem('visitorCount');
         if (saved) count = parseInt(saved);
         count++;
         localStorage.setItem('visitorCount', count);
-        document.getElementById('counter').textContent = String(count).padStart(6, '0');
-    </script>
-</body>
-</html>
+        counterEl.textContent = String(count).padStart(6, '0');
+    }
+
+    // Smooth-scroll fallback for older browsers
+    document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
+        anchor.addEventListener('click', function (e) {
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    });
+})();
+
+
+              </script>
+                        </body>
+                        </html>
+                    
