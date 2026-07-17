@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome</title>
+    <title>Kura</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
         }
 
         body {
@@ -18,34 +22,76 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
             line-height: 1.6;
         }
 
-        .container {
-            max-width: 600px;
+        /* ── Header ── */
+        header {
+            border-bottom: 1px solid #000;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .site-title {
+            font-size: 1.6rem;
+            font-style: italic;
+            letter-spacing: 4px;
+        }
+
+        nav {
+            display: flex;
+            gap: 24px;
+        }
+
+        nav a {
+            color: #000;
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 4px 0;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        nav a:hover {
+            border-bottom: 1px solid #000;
+        }
+
+        nav a:visited {
+            color: #000;
+        }
+
+        /* ── Main ── */
+        main {
+            flex: 1;
+            max-width: 700px;
             width: 100%;
-            text-align: center;
-            border: 1px solid #000;
+            margin: 0 auto;
             padding: 60px 40px;
-            background: #ffffff;
         }
 
         h1 {
             font-size: 2rem;
             font-weight: normal;
             font-style: italic;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
             letter-spacing: 1px;
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            font-weight: normal;
+            font-style: italic;
+            margin-bottom: 8px;
         }
 
         hr {
             border: none;
             border-top: 1px solid #000;
-            margin: 30px auto;
-            width: 60%;
+            margin: 24px 0;
         }
 
         hr.double {
@@ -63,61 +109,156 @@
             color: #333;
         }
 
-        .dots {
-            font-style: normal;
+        /* ── Sections ── */
+        .section {
+            margin-bottom: 56px;
         }
 
-        .blink {
-            animation: blink 1.5s step-end infinite;
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: normal;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
         }
 
-        @keyframes blink {
-            0%, 49% { opacity: 1; }
-            50%, 100% { opacity: 0; }
+        .ornament {
+            text-align: center;
+            font-size: 1.2rem;
+            letter-spacing: 8px;
+            margin: 10px 0;
+            color: #000;
         }
 
-        .counter {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 0.9rem;
+        /* ── Discord Box ── */
+        .discord-box {
             border: 1px solid #000;
-            display: inline-block;
-            padding: 4px 12px;
-            margin-top: 20px;
-            background: #f5f5f5;
+            padding: 24px;
+            text-align: center;
+            margin: 24px 0;
         }
 
-        .footer {
-            margin-top: 40px;
+        .discord-box a {
+            color: #000;
+            text-decoration: underline;
+            font-size: 1rem;
+        }
+
+        .discord-box a:visited {
+            color: #551A8B;
+        }
+
+        /* ── About ── */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .about-card {
+            border: 1px solid #000;
+            padding: 20px;
+        }
+
+        .about-card h3 {
+            font-size: 0.95rem;
+            font-weight: normal;
+            font-style: italic;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .about-card p {
+            font-size: 0.85rem;
+            color: #333;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 560px) {
+            .about-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Updates ── */
+        .update-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .update-list li {
+            padding: 14px 0;
+            border-bottom: 1px dotted #999;
+            font-size: 0.9rem;
+            display: flex;
+            gap: 20px;
+            align-items: baseline;
+        }
+
+        .update-list li:last-child {
+            border-bottom: none;
+        }
+
+        .update-date {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.8rem;
+            color: #666;
+            min-width: 90px;
+        }
+
+        .update-tag {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.7rem;
+            border: 1px solid #000;
+            padding: 1px 6px;
+            margin-left: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ── Members ── */
+        .members {
+            margin-top: 20px;
+        }
+
+        .member-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dotted #ccc;
+            font-size: 0.9rem;
+        }
+
+        .member-row:last-child {
+            border-bottom: none;
+        }
+
+        .member-role {
+            font-style: italic;
+            color: #555;
+        }
+
+        /* ── Footer ── */
+        footer {
+            border-top: 1px solid #000;
+            padding: 20px 40px;
+            text-align: center;
             font-size: 0.75rem;
             color: #666;
-            text-align: center;
         }
 
-        .footer a {
+        footer a {
             color: #000;
             text-decoration: underline;
         }
 
-        .footer a:visited {
+        footer a:visited {
             color: #551A8B;
         }
 
-        .ornament {
-            font-size: 1.2rem;
-            letter-spacing: 8px;
-            margin: 10px 0;
-        }
-
-        .notice {
-            border: 1px dashed #000;
-            padding: 12px 20px;
-            margin: 20px 0;
-            font-size: 0.9rem;
-            display: inline-block;
-        }
-
         .credits {
-            margin-top: 20px;
+            margin-top: 8px;
             font-size: 0.8rem;
             color: #444;
             line-height: 1.8;
@@ -127,45 +268,118 @@
             font-weight: normal;
             font-style: italic;
         }
+
+        .counter {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.8rem;
+            border: 1px solid #000;
+            display: inline-block;
+            padding: 3px 10px;
+            margin-top: 12px;
+            background: #f5f5f5;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="ornament">❦ ❦ ❦</div>
+    <header>
+        <div class="site-title">— Kura —</div>
+        <nav>
+            <a href="#home">home</a>
+            <a href="#about">about</a>
+            <a href="#updates">updates</a>
+            <a href="/join">discord</a>
+        </nav>
+    </header>
 
-        <h1>coming soon<span class="dots">....</span></h1>
+    <main>
+        <section id="home" class="section">
+            <div class="ornament">❦ ❦ ❦</div>
+            <h1>Welcome to Kura.</h1>
+            <hr class="double">
+            <p>A small organization, quietly building something of its own.</p>
+            <p class="small">Take your time. Look around.</p>
+        </section>
 
-        <hr class="double">
+        <section id="about" class="section">
+            <p class="section-title">— About —</p>
+            <hr>
+            <p><strong>Kura</strong> is a small, independent group. We create, explore, and share — at our own pace, in our own way.</p>
+            <p>We don't chase trends. We build what feels right, and we let it grow naturally.</p>
 
-        <p>We are preparing something new.</p>
-        <p class="small">Please be patient &amp; check back later.</p>
+            <div class="about-grid">
+                <div class="about-card">
+                    <h3>Philosophy</h3>
+                    <p>Slow, steady, sincere. Quality over speed. Meaning over noise.</p>
+                </div>
+                <div class="about-card">
+                    <h3>Focus</h3>
+                    <p>Community, creativity, and quiet craftsmanship in everything we touch.</p>
+                </div>
+            </div>
 
-        <div class="notice">
-            ★ Under Construction ★
-        </div>
+            <hr>
 
-        <hr>
+            <h2>Members</h2>
+            <div class="members">
+                <div class="member-row">
+                    <span>zumi</span>
+                    <span class="member-role">— Owner</span>
+                </div>
+                <div class="member-row">
+                    <span>Klyn</span>
+                    <span class="member-role">— Developer</span>
+                </div>
+            </div>
+        </section>
 
-        <p class="small">
-            Join our community on Discord:<br>
-            <a href="/join">→ /join</a>
-        </p>
+        <section class="section">
+            <div class="discord-box">
+                <p class="small">Join our community</p>
+                <p><a href="/join">→ Discord</a></p>
+            </div>
+        </section>
 
-        <div class="counter">
-            visitors: <span id="counter">000042</span>
-        </div>
+        <section id="updates" class="section">
+            <p class="section-title">— Updates —</p>
+            <hr>
+            <ul class="update-list">
+                <li>
+                    <span class="update-date">2025.06.15</span>
+                    <span>Official site launched. The beginning of Kura.<span class="update-tag">new</span></span>
+                </li>
+                <li>
+                    <span class="update-date">2025.06.14</span>
+                    <span>About section and member list added.</span>
+                </li>
+                <li>
+                    <span class="update-date">2025.06.12</span>
+                    <span>Discord community opened. Come say hello.</span>
+                </li>
+                <li>
+                    <span class="update-date">2025.06.10</span>
+                    <span>Project planning started. Ideas taking shape.</span>
+                </li>
+                <li>
+                    <span class="update-date">2025.06.08</span>
+                    <span>Kura was founded by zumi and Klyn.</span>
+                </li>
+            </ul>
+        </section>
 
         <div class="ornament">— ✦ —</div>
-    </div>
+    </main>
 
-    <div class="footer">
-        <p>© MMXXV — Best viewed with any browser</p>
+    <footer>
+        <p>© MMXXV Kura — Best viewed with any browser</p>
         <p><a href="/join">Discord</a></p>
         <div class="credits">
             <p>Owner: <strong>zumi</strong></p>
             <p>Developer: <strong>Klyn</strong></p>
         </div>
-    </div>
+        <div class="counter">
+            visitors: <span id="counter">000042</span>
+        </div>
+    </footer>
 
     <script>
         // /join → Discord redirect
@@ -173,7 +387,7 @@
             window.location.href = 'https://discord.gg/D6PGKFKZEq';
         }
 
-        // Fake visitor counter
+        // Visitor counter
         let count = 42;
         const saved = localStorage.getItem('visitorCount');
         if (saved) {
