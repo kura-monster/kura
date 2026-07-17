@@ -11,7 +11,7 @@
 
                 /* css/style.css */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+html { scroll-behavior: smooth; }
 body {
     font-family: "Times New Roman", Times, Georgia, serif;
     background: #ffffff;
@@ -85,6 +85,7 @@ h2 {
     font-style: italic;
     margin: 32px 0 12px;
     letter-spacing: 1px;
+    scroll-margin-top: 100px;
 }
 h3 {
     font-size: 0.95rem;
@@ -140,12 +141,8 @@ a:visited { color: #000; }
     width: 170px;
     padding-right: 16px;
 }
-.status-active {
-    font-style: italic;
-}
-.live {
-    font-style: italic;
-}
+.status-active { font-style: italic; }
+.live { font-style: italic; }
 
 /* ── Cards ── */
 .card-grid {
@@ -160,10 +157,7 @@ a:visited { color: #000; }
     background: #fff;
     transition: all 0.25s ease;
 }
-.card:hover {
-    background: #fafafa;
-}
-.card h3 { }
+.card:hover { background: #fafafa; }
 .card p { font-size: 0.85rem; color: #333; margin-bottom: 0; }
 @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
 
@@ -179,7 +173,6 @@ a:visited { color: #000; }
     padding: 28px;
     background: #fff;
     position: relative;
-    scroll-margin-top: 100px;
 }
 .server-header {
     display: flex;
@@ -224,9 +217,7 @@ a:visited { color: #000; }
     font-family: "Courier New", Courier, monospace;
     letter-spacing: 1px;
 }
-.stat-value.updating {
-    animation: pulse 0.5s ease-in-out;
-}
+.stat-value.updating { animation: pulse 0.5s ease-in-out; }
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
@@ -311,7 +302,7 @@ footer {
     background: #fff;
 }
 
-/* ── Hash target highlight ── */
+/* ── Target highlight ── */
 :target {
     animation: target-flash 1.2s ease-out;
 }
@@ -334,20 +325,20 @@ footer {
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header>
+    <header id="site-header">
         <div class="site-title">— Kura —</div>
         <nav>
-            <a href="#home">home</a>
-            <a href="#about">about</a>
-            <a href="#servers">servers</a>
-            <a href="#structure">structure</a>
-            <a href="#updates">updates</a>
+            <a href="#home" data-nav>home</a>
+            <a href="#about" data-nav>about</a>
+            <a href="#servers" data-nav>servers</a>
+            <a href="#structure" data-nav>structure</a>
+            <a href="#updates" data-nav>updates</a>
             <a href="/join">join</a>
         </nav>
     </header>
 
     <main>
-        <section id="home" class="section">
+        <section id="home" class="section" data-section>
             <div class="ornament">❦ ❦ ❦</div>
             <h1>Kura.</h1>
             <div class="subtitle">— a discord raid organization —</div>
@@ -367,7 +358,7 @@ footer {
             </table>
         </section>
 
-        <section id="about" class="section">
+        <section id="about" class="section" data-section>
             <p class="section-title">— About —</p>
             <hr>
             <p><strong>Kura</strong> is a Discord raid organization led by zumi. We move fast, we move quiet, and we leave nothing standing.</p>
@@ -394,7 +385,7 @@ footer {
             </div>
         </section>
 
-        <section id="servers" class="section">
+        <section id="servers" class="section" data-section>
             <p class="section-title">— Servers —</p>
             <hr>
             <p class="small">Live member counts. Updated every second.</p>
@@ -462,7 +453,7 @@ footer {
             </div>
         </section>
 
-        <section id="structure" class="section">
+        <section id="structure" class="section" data-section>
             <p class="section-title">— Structure —</p>
             <hr>
 
@@ -482,7 +473,7 @@ footer {
 
             <hr>
 
-            <h2>Operations Log</h2>
+            <h2 id="updates">Operations Log</h2>
             <ul class="update-list">
                 <li>
                     <span class="update-date">2025.07.18</span>
@@ -561,45 +552,76 @@ footer {
         counterEl.textContent = String(count).padStart(6, '0');
     }
 
-    // ── Smooth scroll for internal anchor clicks ──
-    document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
+    // ── Scroll utilities ──
+    // Calculate header height dynamically for accurate offset
+    function getHeaderHeight() {
+        const header = document.getElementById('site-header');
+        return header ? header.offsetHeight : 80;
+    }
+
+    // Scroll to a hash target, with offset for sticky header
+    function scrollToHash(hash, smooth) {
+        if (!hash) return false;
+        const id = hash.replace(/^#/, '');
+        if (!id) return false;
+        const target = document.getElementById(id);
+        if (!target) return false;
+
+        const headerOffset = getHeaderHeight() + 16;
+        const rect = target.getBoundingClientRect();
+        const targetTop = rect.top + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+            top: Math.max(0, targetTop),
+            behavior: smooth ? 'smooth' : 'auto'
+        });
+        return true;
+    }
+
+    // Retry scroll multiple times after load (handles late layout shifts)
+    function scheduleInitialScroll() {
+        const hash = window.location.hash;
+        if (!hash) return;
+        const delays = [50, 200, 500, 1000];
+        delays.forEach(function (delay) {
+            setTimeout(function () {
+                scrollToHash(hash, delay === 50 ? false : true);
+            }, delay);
+        });
+    }
+
+    // ── Nav link clicks ──
+    document.querySelectorAll('a[data-nav], nav a[href^="#"]').forEach(function (anchor) {
         anchor.addEventListener('click', function (e) {
-            const hash = this.getAttribute('href');
-            if (!hash || hash === '#') return;
-            const target = document.querySelector(hash);
-            if (target) {
-                e.preventDefault();
-                history.pushState(null, '', hash);
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            const href = this.getAttribute('href');
+            if (!href || href.charAt(0) !== '#') return;
+            e.preventDefault();
+            history.pushState(null, '', href);
+            scrollToHash(href, true);
         });
     });
 
-    // ── Handle initial hash on page load (fixes https://kura.monster/#updates) ──
-    function scrollToHash() {
-        const hash = window.location.hash;
-        if (!hash) return;
-        const target = document.querySelector(hash);
-        if (target) {
-            // Slight delay so layout is fully painted
-            setTimeout(function () {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 120);
-        }
-    }
+    // ── Initial scroll on page load (fixes direct URL with #updates) ──
     if (document.readyState === 'complete') {
-        scrollToHash();
+        scheduleInitialScroll();
     } else {
-        window.addEventListener('load', scrollToHash);
+        window.addEventListener('load', scheduleInitialScroll);
+        // Also run on DOMContentLoaded as a fallback
+        document.addEventListener('DOMContentLoaded', function () {
+            const hash = window.location.hash;
+            if (hash) {
+                setTimeout(function () { scrollToHash(hash, false); }, 50);
+            }
+        });
     }
 
-    // Handle back/forward browser navigation
-    window.addEventListener('hashchange', function () {
+    // ── Handle browser back/forward ──
+    window.addEventListener('popstate', function () {
         const hash = window.location.hash;
-        if (!hash) return;
-        const target = document.querySelector(hash);
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (hash) {
+            setTimeout(function () { scrollToHash(hash, true); }, 50);
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     });
 
@@ -689,7 +711,6 @@ footer {
                 setCount(invite.code, result.members, result.online);
             }
         }
-        // Poll one invite per second, rotating (each invite refreshed ~3s)
         setInterval(pollNext, 1000);
     })();
 })();
