@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Times New Roman", Times, Georgia, serif;
+            background: #ffffff;
+            color: #000000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid #000;
+            padding: 60px 40px;
+            background: #ffffff;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: normal;
+            font-style: italic;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #000;
+            margin: 30px auto;
+            width: 60%;
+        }
+
+        hr.double {
+            border: none;
+            border-top: 3px double #000;
+        }
+
+        p {
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        .small {
+            font-size: 0.85rem;
+            color: #333;
+        }
+
+        .dots {
+            font-style: normal;
+        }
+
+        .blink {
+            animation: blink 1.5s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .counter {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.9rem;
+            border: 1px solid #000;
+            display: inline-block;
+            padding: 4px 12px;
+            margin-top: 20px;
+            background: #f5f5f5;
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-size: 0.75rem;
+            color: #666;
+            text-align: center;
+        }
+
+        .footer a {
+            color: #000;
+            text-decoration: underline;
+        }
+
+        .footer a:visited {
+            color: #551A8B;
+        }
+
+        .ornament {
+            font-size: 1.2rem;
+            letter-spacing: 8px;
+            margin: 10px 0;
+        }
+
+        .notice {
+            border: 1px dashed #000;
+            padding: 12px 20px;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        .credits {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #444;
+            line-height: 1.8;
+        }
+
+        .credits strong {
+            font-weight: normal;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="ornament">❦ ❦ ❦</div>
+
+        <h1>coming soon<span class="dots">....</span></h1>
+
+        <hr class="double">
+
+        <p>We are preparing something new.</p>
+        <p class="small">Please be patient &amp; check back later.</p>
+
+        <div class="notice">
+            ★ Under Construction ★
+        </div>
+
+        <hr>
+
+        <p class="small">
+            Join our community on Discord:<br>
+            <a href="/join">→ /join</a>
+        </p>
+
+        <div class="counter">
+            visitors: <span id="counter">000042</span>
+        </div>
+
+        <div class="ornament">— ✦ —</div>
+    </div>
+
+    <div class="footer">
+        <p>© MMXXV — Best viewed with any browser</p>
+        <p><a href="/join">Discord</a></p>
+        <div class="credits">
+            <p>Owner: <strong>zumi</strong></p>
+            <p>Developer: <strong>Klyn</strong></p>
+        </div>
+    </div>
+
+    <script>
+        // /join → Discord redirect
+        if (window.location.pathname === '/join') {
+            window.location.href = 'https://discord.gg/D6PGKFKZEq';
+        }
+
+        // Fake visitor counter
+        let count = 42;
+        const saved = localStorage.getItem('visitorCount');
+        if (saved) {
+            count = parseInt(saved);
+        }
+        count++;
+        localStorage.setItem('visitorCount', count);
+        document.getElementById('counter').textContent = String(count).padStart(6, '0');
+    </script>
+</body>
+</html>
