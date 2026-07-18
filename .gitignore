@@ -1,1 +1,1 @@
-Nothing needs to be added to .gitignore since the changes only include HTML files, JavaScript files, and a .dev.vars.example file, which are all source/config files that should not be ignored.
+Nothing should be ignored based on the provided file changes. The only modified file is `worker/index.js`, which is a source code file and should not be added to .gitignore.
