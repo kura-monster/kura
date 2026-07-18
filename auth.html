@@ -130,7 +130,7 @@
         <div class="site-title">— Kura —</div>
         <nav>
             <a href="index.html">home</a>
-            <a href="shop.html">shop</a>
+            <a href="shop/">shop</a>
             <a href="profile.html">profile</a>
         </nav>
     </header>
@@ -164,10 +164,10 @@
             const checkingMsg = document.getElementById('checking-msg');
             const loginBtn = document.getElementById('discord-login');
 
-            // すでにログイン済みなら shop.html へリダイレクト
+            // すでにログイン済みなら shop/ へリダイレクト
             const session = await checkSession();
             if (session) {
-                window.location.href = 'shop.html';
+                window.location.href = 'shop/';
                 return;
             }
 

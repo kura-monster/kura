@@ -257,7 +257,7 @@
         <div class="site-title">— Kura —</div>
         <nav>
             <a href="index.html">home</a>
-            <a href="shop.html">shop</a>
+            <a href="shop/">shop</a>
             <a href="profile.html">profile</a>
         </nav>
     </header>
@@ -380,11 +380,13 @@
                 
                 // Fetch Discord user details for avatar
                 try {
-                    // We need to get the avatar from Discord API
-                    // This requires the access token which we don't have directly
-                    // So we'll use a default or generate based on username
-                    const avatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userData.userid) % 5}.png`;
-                    avatarImg.src = avatarUrl;
+                    // Worker returns avatar URL in the response
+                    if (userData.avatar) {
+                        avatarImg.src = userData.avatar;
+                    } else {
+                        const avatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userData.userid) % 5}.png`;
+                        avatarImg.src = avatarUrl;
+                    }
                 } catch (e) {
                     console.warn('Could not fetch avatar:', e);
                     avatarImg.src = 'https://cdn.discordapp.com/embed/avatars/0.png';

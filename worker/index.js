@@ -182,7 +182,7 @@ export default {
             return new Response(null, {
                 status: 302,
                 headers: {
-                    'Location': env.SITE_ORIGIN + '/shop.html',
+                    'Location': env.SITE_ORIGIN + '/shop/',
                     'Set-Cookie':
                         '__kura_session=' + sessionToken +
                         '; HttpOnly; Secure; Path=/; SameSite=None; Max-Age=2592000'
