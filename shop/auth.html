@@ -163,10 +163,31 @@
             const checkingMsg = document.getElementById('checking-msg');
             const loginBtn = document.getElementById('discord-login');
 
-            // すでにログイン済みなら shop.html へリダイレクト
+            // ── 戻り先URLの取得と検証 ──
+            // ?redirect=<戻りたいページのURL> を受け取る。
+            // オープンリダイレクト対策として、自分のドメイン配下しか許可しない。
+            const params = new URLSearchParams(window.location.search);
+            const requestedRedirect = params.get('redirect');
+
+            function isAllowedRedirect(url) {
+                try {
+                    const target = new URL(url, window.location.origin);
+                    return target.hostname === 'kura.monster'
+                        || target.hostname.endsWith('.kura.monster');
+                } catch (err) {
+                    return false;
+                }
+            }
+
+            const DEFAULT_RETURN = 'https://kura.monster/shop/index.html';
+            const safeRedirect = (requestedRedirect && isAllowedRedirect(requestedRedirect))
+                ? requestedRedirect
+                : DEFAULT_RETURN;
+
+            // すでにログイン済みなら、確認せず戻り先へ直接戻す
             const session = await checkSession();
             if (session) {
-                window.location.href = 'shop.html';
+                window.location.href = safeRedirect;
                 return;
             }
 
@@ -176,7 +197,11 @@
 
             loginBtn.addEventListener('click', function (e) {
                 e.preventDefault();
-                window.location.href = WORKER_URL + '/auth/login';
+                // 戻り先をクエリで /auth/login に渡す。
+                // Worker 側でこれを Discord の state パラメータに載せて
+                // callback で読み戻し、最終的にここへリダイレクトする。
+                window.location.href = WORKER_URL
+                    + '/auth/login?redirect=' + encodeURIComponent(safeRedirect);
             });
         })();
     </script>
