@@ -30,12 +30,20 @@ async function verify(token, secret) {
     return expected === token ? value : null;
 }
 
-// ── MongoDB 接続（グローバルキャッシュ）──
+// ── MongoDB 接続（リフレッシュ対応）──
 let mongoClient = null;
+let lastDbConnectTime = 0;
 
-function db(env) {
-    if (!mongoClient) {
+async function getDb(env) {
+    const now = Date.now();
+    // 5 分ごとに接続を更新（Workers のコールドスタート対策）
+    if (!mongoClient || (now - lastDbConnectTime) > 300000) {
+        if (mongoClient) {
+            try { await mongoClient.close(); } catch (e) {}
+        }
         mongoClient = new MongoClient(env.MONGODB_URI);
+        await mongoClient.connect();
+        lastDbConnectTime = now;
     }
     const d = mongoClient.db('kura');
     return {
@@ -166,8 +174,8 @@ export default {
             const username = user.username;
 
             // bot と共有: userid / money
-            const { users } = db(env);
-            await users.updateOne(
+            const db = await getDb(env);
+            await db.users.updateOne(
                 { userid: userId },
                 {
                     $setOnInsert: { userid: userId, username, money: 0 },
@@ -195,7 +203,7 @@ export default {
             const discordId = await getSessionUserId(request, env);
             if (!discordId) return jsonWithCors({ error: 'unauthorized' }, 401, env, request);
 
-            const doc = await db(env).users.findOne(
+            const doc = await (await getDb(env)).users.findOne(
                 { userid: discordId },
                 { projection: { _id: 0 } }
             );
@@ -306,7 +314,7 @@ export default {
 
         // ── 商品一覧 ──
         if (path === '/api/products' && request.method === 'GET') {
-            const products = await db(env).products.find(
+            const products = await (await getDb(env)).products.find(
                 {},
                 { projection: { _id: 0 } }
             ).toArray();
@@ -327,7 +335,7 @@ export default {
             const { product_id } = body;
             if (!product_id) return jsonWithCors({ error: 'bad request: product_id required' }, 400, env, request);
 
-            const { users, products, purchases } = db(env);
+            const db = await getDb(env); const { users, products, purchases } = db;
 
             const product = await products.findOne({ id: product_id }, { projection: { _id: 0 } });
             if (!product) return jsonWithCors({ error: 'product not found' }, 404, env, request);
@@ -337,7 +345,7 @@ export default {
             if (user.money < product.price) return jsonWithCors({ error: 'insufficient balance' }, 400, env, request);
 
             // 残高減算（bot との競合を防ぐため money >= price の条件付き）
-            const result = await users.updateOne(
+            const result = await db.users.updateOne(
                 { userid: discordId, money: { $gte: product.price } },
                 { $inc: { money: -product.price } }
             );
