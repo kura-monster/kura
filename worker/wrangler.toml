@@ -6,3 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 SITE_ORIGIN = "https://kura.monster"
 REDIRECT_URI = "https://kura-auth.kuras.workers.dev/auth/callback"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
