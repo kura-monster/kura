@@ -1,0 +1,13 @@
+# ── ローカル開発用変数（.dev.vars） ──
+# このファイルをコピーして .dev.vars という名前で保存してください。
+# .dev.vars は絶対に Git にコミットしないでください！
+#
+# 使い方:
+#   cp .dev.vars.example .dev.vars
+#   # .dev.vars を実際の値で編集
+#   wrangler dev
+
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_CLIENT_SECRET=your_discord_client_secret
+SESSION_SECRET=your_random_long_secret_string_here

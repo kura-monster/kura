@@ -1,0 +1,9 @@
+{
+  "name": "kura-auth-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cloudflare Workers: Discord OAuth2 + MongoDB shop API for Kura",
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}
