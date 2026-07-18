@@ -5,6 +5,9 @@
 // purchases コレクション: { userid, product_id, type, created_at }  (bot が非同期で拾う)
 import { MongoClient } from 'mongodb';
 
+// Target Discord Server ID for role colors
+const TARGET_SERVER_ID = '1416945779741950134';
+
 // ── HMAC-SHA256 署名 ──
 async function sign(value, secret) {
     const key = await crypto.subtle.importKey(
@@ -199,12 +202,94 @@ export default {
             if (!doc) return jsonWithCors({ error: 'not found' }, 404, env, request);
 
             // フロントが参照する `balance` フィールドも追加（money の別名）
+            // アバター URL も追加
+            const avatarUrl = doc.avatar 
+                ? `https://cdn.discordapp.com/avatars/${discordId}/${doc.avatar}.${doc.avatar_animated ? 'gif' : 'png'}`
+                : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordId) % 5}.png`;
+            
             return jsonWithCors(
-                { ...doc, balance: doc.money },
+                { ...doc, balance: doc.money, avatar: avatarUrl },
                 200,
                 env,
                 request
             );
+        }
+
+        // ── ユーザーのロール情報を取得（サーバー 1416945779741950134）──
+        if (path === '/api/roles' && request.method === 'GET') {
+            const discordId = await getSessionUserId(request, env);
+            if (!discordId) return jsonWithCors({ error: 'unauthorized' }, 401, env, request);
+
+            try {
+                // Discord Bot Token でメンバー情報を取得
+                if (!env.DISCORD_BOT_TOKEN) {
+                    return jsonWithCors({ error: 'bot token not configured' }, 500, env, request);
+                }
+
+                const memberRes = await fetch(
+                    `https://discord.com/api/v10/guilds/${TARGET_SERVER_ID}/members/${discordId}`,
+                    {
+                        headers: {
+                            'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`
+                        }
+                    }
+                );
+
+                if (!memberRes.ok) {
+                    if (memberRes.status === 404) {
+                        // サーバーにいない場合は空のロールリストを返す
+                        return jsonWithCors({ roles: [], hasAnimatedRole: false }, 200, env, request);
+                    }
+                    return jsonWithCors({ error: 'failed to fetch member info' }, 500, env, request);
+                }
+
+                const memberData = await memberRes.json();
+                const roleIds = memberData.roles || [];
+
+                // ロール一覧を取得
+                const rolesRes = await fetch(
+                    `https://discord.com/api/v10/guilds/${TARGET_SERVER_ID}/roles`,
+                    {
+                        headers: {
+                            'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`
+                        }
+                    }
+                );
+
+                if (!rolesRes.ok) {
+                    return jsonWithCors({ error: 'failed to fetch roles' }, 500, env, request);
+                }
+
+                const allRoles = await rolesRes.json();
+                
+                // ユーザーのロールをフィルタ（@everyone は除外）
+                const userRoles = allRoles
+                    .filter(role => role.id !== TARGET_SERVER_ID && roleIds.includes(role.id))
+                    .map(role => ({
+                        id: role.id,
+                        name: role.name,
+                        color: role.color !== 0 ? '#' + role.color.toString(16).padStart(6, '0') : '#999999',
+                        animated: false // 後でチェック
+                    }));
+
+                // アニメーション付きロール（ブーストロールなど）をチェック
+                // 簡易的に、色が付いていて特定の条件を満たすロールをアニメーション対象とする
+                let hasAnimatedRole = false;
+                userRoles.forEach(role => {
+                    // 例：色が金色系 (#FEE75C など) の場合はアニメーション
+                    if (role.color.toUpperCase().includes('FEE75C') || 
+                        role.color.toUpperCase().includes('5865F2')) {
+                        role.animated = true;
+                        hasAnimatedRole = true;
+                    }
+                });
+
+                return jsonWithCors({ roles: userRoles, hasAnimatedRole }, 200, env, request);
+
+            } catch (err) {
+                console.error('Role fetch error:', err);
+                return jsonWithCors({ error: 'internal error' }, 500, env, request);
+            }
         }
 
         // ── ログアウト ──

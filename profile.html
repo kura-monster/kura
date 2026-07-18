@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Kura user profile">
+    <title>Kura — Profile</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: "Times New Roman", Times, Georgia, serif;
+            background: #ffffff;
+            color: #000000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+        header {
+            border-bottom: 1px solid #000;
+            padding: 22px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .site-title {
+            font-size: 1.7rem;
+            font-style: italic;
+            letter-spacing: 4px;
+        }
+        nav { display: flex; gap: 24px; flex-wrap: wrap; }
+        nav a {
+            color: #000;
+            text-decoration: none;
+            font-size: 0.88rem;
+            padding: 4px 0;
+            border-bottom: 1px solid transparent;
+            transition: all 0.25s ease;
+        }
+        nav a:hover {
+            border-bottom: 1px solid #000;
+            font-style: italic;
+        }
+        nav a:visited { color: #000; }
+        main {
+            flex: 1;
+            max-width: 760px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+        h1 {
+            font-size: 2.4rem;
+            font-weight: normal;
+            font-style: italic;
+            margin-bottom: 6px;
+            letter-spacing: 2px;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            letter-spacing: 4px;
+            text-transform: lowercase;
+            margin-bottom: 18px;
+            color: #333;
+            font-style: italic;
+        }
+        hr { border: none; border-top: 1px solid #000; margin: 24px 0; }
+        hr.double { border: none; border-top: 3px double #000; }
+        .lead {
+            font-size: 1.15rem;
+            font-style: italic;
+        }
+        .ornament {
+            text-align: center;
+            font-size: 1.3rem;
+            letter-spacing: 12px;
+            margin: 10px 0;
+            color: #000;
+        }
+        footer {
+            border-top: 1px solid #000;
+            padding: 24px 40px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #666;
+            font-style: italic;
+            background: #fff;
+        }
+        
+        /* Profile Styles */
+        .profile-container {
+            max-width: 500px;
+            margin: 40px auto;
+            text-align: center;
+        }
+        
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid #000;
+            margin: 0 auto 24px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .profile-avatar.animated {
+            animation: avatarPulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes avatarPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 5px rgba(0, 0, 0, 0.2); }
+        }
+        
+        .profile-avatar.rainbow {
+            animation: rainbowBorder 2s linear infinite;
+        }
+        
+        @keyframes rainbowBorder {
+            0% { border-color: #ff0000; box-shadow: 0 0 15px 3px rgba(255, 0, 0, 0.5); }
+            14% { border-color: #ff7f00; box-shadow: 0 0 15px 3px rgba(255, 127, 0, 0.5); }
+            28% { border-color: #ffff00; box-shadow: 0 0 15px 3px rgba(255, 255, 0, 0.5); }
+            42% { border-color: #00ff00; box-shadow: 0 0 15px 3px rgba(0, 255, 0, 0.5); }
+            57% { border-color: #0000ff; box-shadow: 0 0 15px 3px rgba(0, 0, 255, 0.5); }
+            71% { border-color: #4b0082; box-shadow: 0 0 15px 3px rgba(75, 0, 130, 0.5); }
+            85% { border-color: #9400d3; box-shadow: 0 0 15px 3px rgba(148, 0, 211, 0.5); }
+            100% { border-color: #ff0000; box-shadow: 0 0 15px 3px rgba(255, 0, 0, 0.5); }
+        }
+        
+        .profile-avatar.glow {
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 10px 2px currentColor; }
+            50% { box-shadow: 0 0 25px 8px currentColor; }
+        }
+        
+        .profile-name {
+            font-size: 1.8rem;
+            font-style: italic;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        
+        .profile-id {
+            font-size: 0.75rem;
+            color: #666;
+            letter-spacing: 3px;
+            margin-bottom: 24px;
+        }
+        
+        .profile-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+            padding: 20px;
+            border: 1px solid #000;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-style: italic;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: #666;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .profile-roles {
+            margin: 24px 0;
+            padding: 20px;
+            border: 1px dotted #999;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            margin: 4px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: 1px solid #000;
+        }
+        
+        .role-badge.animated {
+            animation: roleShimmer 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes roleShimmer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .loading-msg {
+            font-style: italic;
+            color: #666;
+            margin-top: 32px;
+        }
+        
+        .error-msg {
+            font-style: italic;
+            color: #900;
+            margin-top: 32px;
+        }
+        
+        .login-prompt {
+            margin-top: 32px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 28px;
+            border: 1px solid #000;
+            background: #fff;
+            color: #000;
+            text-decoration: none;
+            font-style: italic;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            background: #000;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <header id="site-header">
+        <div class="site-title">— Kura —</div>
+        <nav>
+            <a href="index.html">home</a>
+            <a href="shop.html">shop</a>
+            <a href="profile.html">profile</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="profile-container">
+            <div class="ornament">❦ ❦ ❦</div>
+            <h1>Profile</h1>
+            <div class="subtitle">— member info —</div>
+            <hr class="double">
+            
+            <!-- Loading State -->
+            <p class="loading-msg" id="loading-msg">Loading profile...</p>
+            
+            <!-- Error State -->
+            <p class="error-msg" id="error-msg" style="display: none;"></p>
+            
+            <!-- Login Prompt -->
+            <div class="login-prompt" id="login-prompt" style="display: none;">
+                <p class="lead">Please log in to view your profile.</p>
+                <a class="btn" id="login-btn" href="#">→ Login with Discord</a>
+            </div>
+            
+            <!-- Profile Content -->
+            <div id="profile-content" style="display: none;">
+                <div class="profile-avatar" id="avatar-container">
+                    <img id="avatar-img" src="" alt="Avatar">
+                </div>
+                
+                <h2 class="profile-name" id="profile-name">—</h2>
+                <p class="profile-id" id="profile-id">—</p>
+                
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-money">0</span>
+                        <span class="stat-label">Money</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-balance">0</span>
+                        <span class="stat-label">Balance</span>
+                    </div>
+                </div>
+                
+                <div class="profile-roles">
+                    <p class="stat-label" style="margin-bottom: 12px;">Server Roles</p>
+                    <div id="roles-container"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>© MMXXV Kura — enter at your own risk</p>
+        <p>
+            <a href="/join">Kura</a> ·
+            <a href="https://discord.gg/3aRbaQkuU4" target="_blank" rel="noopener">!Kr Dev</a> ·
+            <a href="https://discord.gg/YPZasPVx35" target="_blank" rel="noopener">ZXCV</a>
+        </p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // Server ID for role colors
+        const TARGET_SERVER_ID = '1416945779741950134';
+        
+        (async function () {
+            'use strict';
+
+            const loadingMsg = document.getElementById('loading-msg');
+            const errorMsg = document.getElementById('error-msg');
+            const loginPrompt = document.getElementById('login-prompt');
+            const loginBtn = document.getElementById('login-btn');
+            const profileContent = document.getElementById('profile-content');
+            const avatarContainer = document.getElementById('avatar-container');
+            const avatarImg = document.getElementById('avatar-img');
+            const profileName = document.getElementById('profile-name');
+            const profileId = document.getElementById('profile-id');
+            const statMoney = document.getElementById('stat-money');
+            const statBalance = document.getElementById('stat-balance');
+            const rolesContainer = document.getElementById('roles-container');
+
+            // Check session
+            const session = await checkSession();
+            
+            if (!session) {
+                // Not logged in
+                loadingMsg.style.display = 'none';
+                loginPrompt.style.display = 'block';
+                
+                loginBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    window.location.href = WORKER_URL + '/auth/login';
+                });
+                return;
+            }
+
+            // User is logged in - fetch profile data
+            try {
+                // Fetch user's Discord info including avatar
+                const discordRes = await fetch(WORKER_URL + '/me', {
+                    credentials: 'include'
+                });
+                
+                if (!discordRes.ok) {
+                    throw new Error('Failed to fetch profile');
+                }
+                
+                const userData = await discordRes.json();
+                
+                // Display profile
+                loadingMsg.style.display = 'none';
+                profileContent.style.display = 'block';
+                
+                // Set basic info
+                profileName.textContent = userData.username || 'Unknown';
+                profileId.textContent = '#' + userData.userid;
+                statMoney.textContent = userData.money || 0;
+                statBalance.textContent = userData.balance || userData.money || 0;
+                
+                // Fetch Discord user details for avatar
+                try {
+                    // We need to get the avatar from Discord API
+                    // This requires the access token which we don't have directly
+                    // So we'll use a default or generate based on username
+                    const avatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(userData.userid) % 5}.png`;
+                    avatarImg.src = avatarUrl;
+                } catch (e) {
+                    console.warn('Could not fetch avatar:', e);
+                    avatarImg.src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                }
+                
+                // Fetch server roles and apply colors/animations
+                await fetchAndApplyRoles(userData.userid);
+                
+            } catch (err) {
+                console.error('Profile load error:', err);
+                loadingMsg.style.display = 'none';
+                errorMsg.textContent = 'Failed to load profile. Please try again.';
+                errorMsg.style.display = 'block';
+            }
+            
+            // Fetch roles from Discord server and apply colors
+            async function fetchAndApplyRoles(userId) {
+                try {
+                    // Fetch roles from the backend API
+                    const rolesRes = await fetch(WORKER_URL + '/api/roles', {
+                        credentials: 'include'
+                    });
+                    
+                    if (rolesRes.ok) {
+                        const roleData = await rolesRes.json();
+                        const roles = roleData.roles || [];
+                        
+                        // Render roles
+                        renderRoles(roles, roleData.hasAnimatedRole);
+                    } else {
+                        // Fallback to default roles if API fails
+                        const simulatedRoles = [
+                            { name: 'Member', color: '#5865F2', animated: false },
+                            { name: 'Active', color: '#57F287', animated: false }
+                        ];
+                        renderRoles(simulatedRoles, false);
+                    }
+                    
+                } catch (err) {
+                    console.warn('Could not fetch roles:', err);
+                    rolesContainer.innerHTML = '<span class="role-badge">Member</span>';
+                }
+            }
+            
+            // Render role badges with colors and animations
+            function renderRoles(roles, hasAnimatedRole = false) {
+                if (roles.length === 0) {
+                    rolesContainer.innerHTML = '<span class="role-badge">Member</span>';
+                    return;
+                }
+                
+                rolesContainer.innerHTML = roles.map(role => {
+                    const color = role.color || '#999';
+                    const animatedClass = role.animated ? 'animated' : '';
+                    const textColor = getContrastColor(color);
+                    
+                    return `<span class="role-badge ${animatedClass}" 
+                            style="background-color: ${color}; color: ${textColor};"
+                            data-color="${color}">${role.name}</span>`;
+                }).join('');
+                
+                // Apply glow effect to avatar based on primary role color
+                if (roles.length > 0 && roles[0].color) {
+                    avatarContainer.style.color = roles[0].color;
+                    avatarContainer.classList.add('glow');
+                }
+                
+                // Apply rainbow animation if user has animated role
+                if (hasAnimatedRole) {
+                    avatarContainer.classList.add('rainbow');
+                }
+            }
+            
+            // Get contrasting text color for readability
+            function getContrastColor(hexColor) {
+                // Remove # if present
+                const hex = hexColor.replace('#', '');
+                
+                // Convert to RGB
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                
+                // Calculate luminance
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                
+                // Return black or white based on luminance
+                return luminance > 0.5 ? '#000000' : '#ffffff';
+            }
+        })();
+    </script>
+</body>
+</html>
