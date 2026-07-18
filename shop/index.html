@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Kura members-only shop. Spend your money on exclusive items.">
+    <title>Kura — Shop</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: "Times New Roman", Times, Georgia, serif;
+            background: #ffffff;
+            color: #000000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+        header {
+            border-bottom: 1px solid #000;
+            padding: 22px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .site-title {
+            font-size: 1.7rem;
+            font-style: italic;
+            letter-spacing: 4px;
+        }
+        nav { display: flex; gap: 24px; flex-wrap: wrap; }
+        nav a {
+            color: #000;
+            text-decoration: none;
+            font-size: 0.88rem;
+            padding: 4px 0;
+            border-bottom: 1px solid transparent;
+            transition: all 0.25s ease;
+        }
+        nav a:hover {
+            border-bottom: 1px solid #000;
+            font-style: italic;
+        }
+        nav a:visited { color: #000; }
+        main {
+            flex: 1;
+            max-width: 760px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+        h1 {
+            font-size: 2.4rem;
+            font-weight: normal;
+            font-style: italic;
+            margin-bottom: 6px;
+            letter-spacing: 2px;
+        }
+        h2 {
+            font-size: 1.25rem;
+            font-weight: normal;
+            font-style: italic;
+            margin: 32px 0 12px;
+            letter-spacing: 1px;
+        }
+        h3 {
+            font-size: 0.95rem;
+            font-weight: normal;
+            font-style: italic;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            letter-spacing: 4px;
+            text-transform: lowercase;
+            margin-bottom: 18px;
+            color: #333;
+            font-style: italic;
+        }
+        hr { border: none; border-top: 1px solid #000; margin: 24px 0; }
+        hr.double { border: none; border-top: 3px double #000; }
+        p { font-size: 1rem; margin-bottom: 16px; }
+        .small { font-size: 0.85rem; color: #333; font-style: italic; }
+        .lead {
+            font-size: 1.15rem;
+            font-style: italic;
+        }
+        .ornament {
+            text-align: center;
+            font-size: 1.3rem;
+            letter-spacing: 12px;
+            margin: 10px 0;
+            color: #000;
+        }
+        .section {
+            margin-bottom: 56px;
+            scroll-margin-top: 100px;
+        }
+        footer {
+            border-top: 1px solid #000;
+            padding: 24px 40px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #666;
+            font-style: italic;
+            background: #fff;
+        }
+
+        /* ── ユーザー情報エリア ── */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            color: #333;
+            font-style: italic;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid #ccc;
+        }
+        .user-name {
+            font-weight: normal;
+        }
+
+        /* ── 残高ボックス ── */
+        .stat-label {
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            color: #666;
+            text-transform: uppercase;
+            font-style: italic;
+        }
+        .balance-box {
+            border: 1px solid #000;
+            padding: 20px 28px;
+            margin: 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .balance-value {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1.8rem;
+        }
+
+        /* ── 商品グリッド ── */
+        .shop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .shop-item {
+            border: 1px solid #000;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .shop-item .price {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 1.1rem;
+        }
+        .seller-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            font-size: 0.85rem;
+            color: #555;
+            font-style: italic;
+        }
+        .seller-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 1px solid #ddd;
+        }
+        .buy-btn {
+            border: 1px solid #000;
+            background: #fff;
+            color: #000;
+            padding: 8px 0;
+            font-style: italic;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            margin-top: auto;
+            font-family: inherit;
+            font-size: 0.95rem;
+            width: 100%;
+        }
+        .buy-btn:hover:not(:disabled) { background: #000; color: #fff; }
+        .buy-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        /* 残高不足のボタン */
+        .buy-btn.insufficient {
+            border-color: #999;
+            color: #999;
+            cursor: not-allowed;
+        }
+        .buy-btn.insufficient:hover { background: #fff; color: #999; }
+
+        .logout-link {
+            display: inline-block;
+            margin-top: 32px;
+            font-size: 0.8rem;
+            font-style: italic;
+            color: #000;
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: inherit;
+            padding: 0;
+        }
+        .logout-link:hover { color: #555; }
+
+        /* ── ローディング・エラー ── */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #c00;
+            font-style: italic;
+        }
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* ── モーダル（購入確認）── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #fff;
+            border: 1px solid #000;
+            padding: 36px 40px;
+            max-width: 360px;
+            width: 90%;
+            text-align: center;
+        }
+        .modal h2 {
+            font-size: 1.2rem;
+            font-style: italic;
+            margin-bottom: 16px;
+        }
+        .modal p { font-size: 0.95rem; margin-bottom: 8px; }
+        .modal .price-line {
+            font-family: "Courier New", monospace;
+            font-size: 1.3rem;
+            margin: 16px 0;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #000;
+            background: #fff;
+            color: #000;
+            font-style: italic;
+            letter-spacing: 1px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.25s ease;
+        }
+        .modal-btn.primary { background: #000; color: #fff; }
+        .modal-btn.primary:hover { background: #333; }
+        .modal-btn.secondary:hover { background: #000; color: #fff; }
+
+        /* ── トースト通知 ── */
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            padding: 12px 20px;
+            border: 1px solid #000;
+            background: #fff;
+            font-size: 0.85rem;
+            font-style: italic;
+            z-index: 300;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.success { border-color: #000; }
+        .toast.error-toast { border-color: #c00; color: #c00; }
+
+        @media (max-width: 560px) {
+            .shop-grid { grid-template-columns: 1fr; }
+            header { padding: 16px 20px; }
+            main { padding: 40px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <header id="site-header">
+        <div class="site-title">— Kura —</div>
+        <nav>
+            <a href="index.html">home</a>
+            <a href="shop/index.html">shop</a>
+            <a href="profile.html">profile</a>
+            <button id="logout-link" style="background: none; border: none; color: #000; font-size: 0.88rem; padding: 4px 0; cursor: pointer; font-family: inherit; text-decoration: none; transition: all 0.25s ease;" onmouseover="this.style.borderBottom='1px solid #000'; this.style.fontStyle='italic';" onmouseout="this.style.borderBottom='1px solid transparent'; this.style.fontStyle='normal';">logout</button>
+        </nav>
+    </header>
+
+    <main>
+        <section class="section">
+            <div class="ornament">❦ ❦ ❦</div>
+            <h1>Shop.</h1>
+            <div class="subtitle">— spend your money —</div>
+            <hr class="double">
+
+            <!-- ユーザー情報 -->
+            <div class="user-info" id="user-info" style="display: none;">
+                <img class="user-avatar" id="user-avatar" src="" alt="Avatar">
+                <span class="user-name" id="user-name">—</span>
+            </div>
+
+            <!-- 残高ボックス -->
+            <div class="balance-box">
+                <span class="stat-label">Your Balance</span>
+                <span class="balance-value" id="balance">— loading —</span>
+            </div>
+
+            <!-- 商品一覧 -->
+            <div class="loading" id="shop-loading">Loading shop items...</div>
+            <div class="error" id="shop-error" style="display: none;"></div>
+            <div class="empty" id="shop-empty" style="display: none;">No products available at this time.</div>
+            <div class="shop-grid" id="shop-grid" style="display: none;"></div>
+
+            <!-- ログアウト -->
+            <button class="logout-link" id="logout" type="button">→ logout</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>© MMXXV Kura — enter at your own risk</p>
+    </footer>
+
+    <!-- 購入確認モーダル -->
+    <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal">
+            <h2 id="modal-title">Confirm Purchase</h2>
+            <p id="modal-product-name">—</p>
+            <div class="price-line" id="modal-price">—</div>
+            <p id="modal-balance-after" class="small">—</p>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" id="modal-cancel" type="button">Cancel</button>
+                <button class="modal-btn primary" id="modal-confirm" type="button">Buy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script>
+        (async function () {
+            'use strict';
+
+            // ── 認証チェック ──
+            const user = await checkSession();
+            if (!user) {
+                window.location.href = '../auth.html';
+                return;
+            }
+
+            // ログアウト処理の紐付け
+            const logoutBtn = document.getElementById('logout-link');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await logout();
+                });
+            }
+
+            // ── DOM 参照 ──
+            const balanceEl        = document.getElementById('balance');
+            const shopGridEl       = document.getElementById('shop-grid');
+            const shopLoadingEl    = document.getElementById('shop-loading');
+            const shopErrorEl      = document.getElementById('shop-error');
+            const shopEmptyEl      = document.getElementById('shop-empty');
+            const userInfoEl       = document.getElementById('user-info');
+            const userAvatarEl     = document.getElementById('user-avatar');
+            const userNameEl       = document.getElementById('user-name');
+            const toastEl          = document.getElementById('toast');
+            const modalOverlay     = document.getElementById('modal-overlay');
+            const modalProductName = document.getElementById('modal-product-name');
+            const modalPrice       = document.getElementById('modal-price');
+            const modalBalanceAfter= document.getElementById('modal-balance-after');
+            const modalCancel      = document.getElementById('modal-cancel');
+            const modalConfirm     = document.getElementById('modal-confirm');
+
+            // ── 状態 ──
+            let currentBalance = 0;
+            let pendingProduct = null;  // { id, name, price }
+            let pendingBtn = null;
+
+            // ── トースト ──
+            let toastTimer = null;
+            function showToast(message, type = 'success') {
+                if (toastTimer) clearTimeout(toastTimer);
+                toastEl.textContent = message;
+                toastEl.className = 'toast show ' + (type === 'error' ? 'error-toast' : 'success');
+                toastTimer = setTimeout(() => {
+                    toastEl.className = 'toast';
+                }, 3500);
+            }
+
+            // ── 残高表示を更新 ──
+            function updateBalance(amount) {
+                currentBalance = amount;
+                balanceEl.textContent = amount.toLocaleString('en-US') + ' money';
+                // 各ボタンの「残高不足」状態を再評価
+                document.querySelectorAll('.buy-btn[data-price]').forEach(btn => {
+                    const price = parseInt(btn.dataset.price, 10);
+                    if (currentBalance < price) {
+                        btn.classList.add('insufficient');
+                        btn.title = 'Insufficient balance';
+                    } else {
+                        btn.classList.remove('insufficient');
+                        btn.title = '';
+                    }
+                });
+            }
+
+            // ── メイン処理 ──
+            async function load() {
+                // セッション確認（未ログインなら auth.html へ）
+                const session = await checkSession();
+                if (!session) {
+                    redirectToLogin();
+                    return;
+                }
+
+                // ユーザー情報を表示
+                userNameEl.textContent = session.username || '(unknown)';
+                if (session.avatar && session.userid) {
+                    userAvatarEl.src =
+                        'https://cdn.discordapp.com/avatars/' + session.userid + '/' + session.avatar + '.png';
+                } else {
+                    // デフォルトアバター
+                    userAvatarEl.src =
+                        'https://cdn.discordapp.com/embed/avatars/0.png';
+                }
+                userInfoEl.style.display = 'flex';
+
+                // balance は /me のレスポンスに含まれる（money の別名）
+                const bal = typeof session.balance === 'number' ? session.balance : (session.money || 0);
+                updateBalance(bal);
+
+                await loadProducts();
+
+                // ボタン類のバインド
+                document.getElementById('logout').addEventListener('click', logout);
+                modalCancel.addEventListener('click', closeModal);
+                modalOverlay.addEventListener('click', function (e) {
+                    if (e.target === modalOverlay) closeModal();
+                });
+                modalConfirm.addEventListener('click', confirmPurchase);
+
+                // ESC でモーダルを閉じる
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape') closeModal();
+                });
+            }
+
+            // ── 商品一覧を取得 ──
+            async function loadProducts() {
+                shopLoadingEl.style.display = 'block';
+                shopErrorEl.style.display = 'none';
+                shopEmptyEl.style.display = 'none';
+                shopGridEl.style.display = 'none';
+
+                try {
+                    const res = await fetch(WORKER_URL + '/api/products', {
+                        credentials: 'include'
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                    const products = await res.json();
+                    renderProducts(products);
+                } catch (err) {
+                    console.error('Error loading products:', err);
+                    shopErrorEl.textContent = 'Failed to load shop items. Please try again later.';
+                    shopErrorEl.style.display = 'block';
+                } finally {
+                    shopLoadingEl.style.display = 'none';
+                }
+            }
+
+            // ── 商品を描画 ──
+            function renderProducts(products) {
+                if (!products || products.length === 0) {
+                    shopEmptyEl.style.display = 'block';
+                    return;
+                }
+
+                shopGridEl.innerHTML = '';
+
+                products.forEach(product => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'shop-item';
+
+                    const affordable = currentBalance >= product.price;
+                    const btnClass = affordable ? 'buy-btn' : 'buy-btn insufficient';
+                    const btnTitle = affordable ? '' : 'Insufficient balance';
+
+                    // XSS 対策：textContent / setAttribute を使う
+                    itemEl.innerHTML = `
+                        <h3></h3>
+                        <p class="small"></p>
+                        <span class="price"></span>
+                        <div class="seller-info">
+                            <img class="seller-icon" alt="Seller">
+                            <span class="seller-name"></span>
+                        </div>
+                        <button class="${btnClass}" data-product-id="" data-price="" title="${btnTitle}">Buy</button>
+                    `;
+
+                    itemEl.querySelector('h3').textContent           = product.name || '—';
+                    itemEl.querySelector('p.small').textContent      = product.description || '';
+                    itemEl.querySelector('.price').textContent       = (product.price || 0).toLocaleString('en-US') + ' money';
+                    itemEl.querySelector('.seller-icon').src         = product.seller_icon ||
+                        'https://cdn.discordapp.com/embed/avatars/0.png';
+                    itemEl.querySelector('.seller-name').textContent =
+                        (product.seller_name || 'Unknown') + ' (' + (product.seller_id || '—') + ')';
+
+                    const btn = itemEl.querySelector('.buy-btn');
+                    btn.dataset.productId = product.id;
+                    btn.dataset.price     = product.price;
+                    btn.dataset.name      = product.name;
+
+                    shopGridEl.appendChild(itemEl);
+                });
+
+                shopGridEl.style.display = 'grid';
+
+                // イベント委譲で Buy ボタンを処理
+                shopGridEl.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.buy-btn');
+                    if (!btn || btn.disabled || btn.classList.contains('insufficient')) return;
+                    openModal(btn);
+                });
+            }
+
+            // ── 購入確認モーダルを開く ──
+            function openModal(btn) {
+                const price = parseInt(btn.dataset.price, 10);
+                pendingProduct = {
+                    id:    btn.dataset.productId,
+                    name:  btn.dataset.name,
+                    price: price
+                };
+                pendingBtn = btn;
+
+                modalProductName.textContent    = pendingProduct.name;
+                modalPrice.textContent          = price.toLocaleString('en-US') + ' money';
+                modalBalanceAfter.textContent   =
+                    'Balance after purchase: ' + (currentBalance - price).toLocaleString('en-US') + ' money';
+
+                modalOverlay.classList.add('active');
+                modalConfirm.focus();
+            }
+
+            // ── モーダルを閉じる ──
+            function closeModal() {
+                modalOverlay.classList.remove('active');
+                pendingProduct = null;
+                pendingBtn = null;
+            }
+
+            // ── 購入を実行 ──
+            async function confirmPurchase() {
+                if (!pendingProduct || !pendingBtn) return;
+
+                const btn = pendingBtn;
+                const product = pendingProduct;
+                closeModal();
+
+                btn.disabled = true;
+                btn.textContent = '...';
+
+                try {
+                    const res = await fetch(WORKER_URL + '/api/purchase', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ product_id: product.id })
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        showToast(data.error || 'Purchase failed.', 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Buy';
+                        return;
+                    }
+
+                    // 残高を更新
+                    const newBalance = typeof data.balance === 'number' ? data.balance : data.money;
+                    updateBalance(newBalance);
+                    showToast('Purchased! Remaining: ' + newBalance.toLocaleString('en-US') + ' money');
+
+                    btn.disabled = false;
+                    btn.textContent = 'Buy';
+
+                } catch (err) {
+                    console.error('purchase error:', err);
+                    showToast('Network error. Please try again.', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Buy';
+                }
+            }
+
+            // ── 開始 ──
+            load();
+        })();
+    </script>
+</body>
+</html>

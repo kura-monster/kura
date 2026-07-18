@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Kura members-only shop. Login with Discord to access the store.">
+    <title>Kura — Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: "Times New Roman", Times, Georgia, serif;
+            background: #ffffff;
+            color: #000000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+        header {
+            border-bottom: 1px solid #000;
+            padding: 22px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .site-title {
+            font-size: 1.7rem;
+            font-style: italic;
+            letter-spacing: 4px;
+        }
+        nav { display: flex; gap: 24px; flex-wrap: wrap; }
+        nav a {
+            color: #000;
+            text-decoration: none;
+            font-size: 0.88rem;
+            padding: 4px 0;
+            border-bottom: 1px solid transparent;
+            transition: all 0.25s ease;
+        }
+        nav a:hover {
+            border-bottom: 1px solid #000;
+            font-style: italic;
+        }
+        nav a:visited { color: #000; }
+        main {
+            flex: 1;
+            max-width: 760px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+        h1 {
+            font-size: 2.4rem;
+            font-weight: normal;
+            font-style: italic;
+            margin-bottom: 6px;
+            letter-spacing: 2px;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            letter-spacing: 4px;
+            text-transform: lowercase;
+            margin-bottom: 18px;
+            color: #333;
+            font-style: italic;
+        }
+        hr { border: none; border-top: 1px solid #000; margin: 24px 0; }
+        hr.double { border: none; border-top: 3px double #000; }
+        .lead {
+            font-size: 1.15rem;
+            font-style: italic;
+        }
+        .ornament {
+            text-align: center;
+            font-size: 1.3rem;
+            letter-spacing: 12px;
+            margin: 10px 0;
+            color: #000;
+        }
+        footer {
+            border-top: 1px solid #000;
+            padding: 24px 40px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #666;
+            font-style: italic;
+            background: #fff;
+        }
+        .auth-wrap {
+            max-width: 420px;
+            margin: 40px auto;
+            text-align: center;
+        }
+        .login-btn {
+            display: inline-block;
+            margin-top: 32px;
+            padding: 14px 36px;
+            border: 1px solid #000;
+            background: #fff;
+            color: #000;
+            text-decoration: none;
+            font-style: italic;
+            letter-spacing: 2px;
+            font-size: 1rem;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        .login-btn:hover {
+            background: #000;
+            color: #fff;
+        }
+        /* ログイン済み確認中の表示 */
+        .checking {
+            font-style: italic;
+            color: #666;
+            margin-top: 32px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header id="site-header">
+        <div class="site-title">— Kura —</div>
+        <nav>
+            <a href="index.html">home</a>
+            <a href="shop/index.html">shop</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="auth-wrap">
+            <div class="ornament">❦ ❦ ❦</div>
+            <h1>Access.</h1>
+            <div class="subtitle">— members only —</div>
+            <hr class="double">
+            <p class="lead">Sign in with Discord to continue.</p>
+
+            <!-- ログイン済み確認中の表示 -->
+            <p class="checking" id="checking-msg">Checking session...</p>
+
+            <!-- 未ログイン時のみ表示 -->
+            <a class="login-btn" id="discord-login" href="#" style="display: none;">→ Login with Discord</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>© MMXXV Kura — enter at your own risk</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        (async function () {
+            'use strict';
+
+            const checkingMsg = document.getElementById('checking-msg');
+            const loginBtn = document.getElementById('discord-login');
+
+            // すでにログイン済みなら shop.html へリダイレクト
+            const session = await checkSession();
+            if (session) {
+                window.location.href = 'shop.html';
+                return;
+            }
+
+            // 未ログインならボタンを表示
+            checkingMsg.style.display = 'none';
+            loginBtn.style.display = 'inline-block';
+
+            loginBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.location.href = WORKER_URL + '/auth/login';
+            });
+        })();
+    </script>
+</body>
+</html>

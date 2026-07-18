@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パスキー・パスワード登録</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #ffffff;
+            color: #333333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+            padding: 32px;
+            width: 100%;
+            max-width: 420px;
+        }
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #222222;
+        }
+        .subtitle {
+            font-size: 0.875rem;
+            color: #666666;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        label {
+            display: block;
+            font-size: 0.8125rem;
+            color: #555555;
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            color: #333333;
+            font-size: 0.9375rem;
+            margin-bottom: 16px;
+            outline: none;
+        }
+        input:focus { border-color: #999999; }
+        button {
+            width: 100%;
+            padding: 11px;
+            background: #f5f5f5;
+            color: #333333;
+            border: 1px solid #cccccc;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover { background: #eeeeee; }
+        button:disabled { color: #999999; cursor: not-allowed; }
+        #result {
+            margin-top: 16px;
+            padding: 12px;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            display: none;
+            border: 1px solid #dddddd;
+        }
+        #result.success { background: #fafafa; color: #333333; }
+        #result.error { background: #fafafa; color: #666666; }
+        .note {
+            margin-top: 16px;
+            font-size: 0.75rem;
+            color: #888888;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>パスキー・パスワード登録</h1>
+        <p class="subtitle">
+            復元用のパスワードを設定し、パスキーを登録してください。<br>
+            パスワードは他のユーザーと重複できません。
+        </p>
+
+        <form id="registerForm" onsubmit="event.preventDefault(); registerPasskey();">
+            <label for="username">表示名（任意）</label>
+            <input type="text" id="username" name="username" autocomplete="name" placeholder="表示名（例: Taro#1234）" title="表示名を入力">
+
+            <label for="password">パスワード（8文字以上）</label>
+            <input type="password" id="password" name="password" autocomplete="new-password" placeholder="パスワードを入力" title="パスワード（8文字以上）を入力してください">
+
+            <label for="passwordConfirm">パスワード（確認）</label>
+            <input type="password" id="passwordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="確認のため再入力" title="パスワード（確認）を入力してください">
+
+            <button type="submit" id="registerBtn">パスキーを登録する</button>
+        </form>
+
+        <div id="result"></div>
+ 
+         <p class="note">
+             ※ 登録完了後、Discordで /restoration スラッシュコマンドを実行してください。
+         </p>
+    </div>
+
+    <script>
+        const setupToken = location.pathname.split('/').pop();
+
+        function bufferToBase64url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let str = '';
+            for (const b of bytes) str += String.fromCharCode(b);
+            return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function base64urlToBuffer(base64url) {
+            const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+            const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
+            const str = atob(base64 + pad);
+            const bytes = new Uint8Array(str.length);
+            for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+            return bytes.buffer;
+        }
+
+        function normalizeCredentialId(id) {
+            if (typeof id === 'string') {
+                return new Uint8Array(base64urlToBuffer(id));
+            }
+            if (Array.isArray(id)) {
+                return new Uint8Array(id);
+            }
+            if (id instanceof ArrayBuffer) {
+                return new Uint8Array(id);
+            }
+            if (ArrayBuffer.isView(id)) {
+                return id;
+            }
+            if (id && typeof id === 'object' && Array.isArray(id.data)) {
+                return new Uint8Array(id.data);
+            }
+            return id;
+        }
+
+        function showResult(type, msg) {
+            const el = document.getElementById('result');
+            el.className = type;
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        async function registerPasskey() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('passwordConfirm').value;
+            const btn = document.getElementById('registerBtn');
+ 
+
+            if (!password || password.length < 8) {
+                showResult('error', 'パスワードは8文字以上で入力してください。');
+                return;
+            }
+            if (password !== passwordConfirm) {
+                showResult('error', 'パスワードが一致しません。');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '確認中...';
+
+            try {
+                const checkRes = await fetch(`/api/register/${setupToken}/check-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, username })
+                });
+ 
+                const checkData = await checkRes.json();
+                if (!checkData.available) {
+                    showResult('error', checkData.message);
+                    btn.disabled = false;
+                    btn.textContent = 'パスキーを登録する';
+                    return;
+                }
+
+                btn.textContent = 'パスキー待機中...';
+                const optionsRes = await fetch(`/api/register/${setupToken}/options`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                const options = await optionsRes.json();
+ 
+                console.log('WebAuthn options from server', options);
+                if (!optionsRes.ok) {
+                    showResult('error', options.message || '登録オプションの取得に失敗しました。');
+                    btn.disabled = false;
+                    btn.textContent = 'パスキーを登録する';
+                    return;
+                }
+ 
+                 // challenge は base64url 文字列なので ArrayBuffer に変換
+                 options.challenge = base64urlToBuffer(options.challenge);
+ 
+                 // options.user.id を ArrayBufferView に正規化
+                 options.user.id = normalizeCredentialId(options.user.id);
+
+                 if (options.excludeCredentials) {
+                     options.excludeCredentials = options.excludeCredentials.map(c => {
+                         return Object.assign({}, c, { id: normalizeCredentialId(c.id) });
+                     });
+                 }
+
+                let credential;
+                try {
+                    credential = await navigator.credentials.create({ publicKey: options });
+                } catch (err) {
+                    console.error('WebAuthn create error', err.name, err.message, err);
+                    showResult('error', `パスキーの作成に失敗しました: ${err.name} ${err.message}`);
+                    btn.disabled = false;
+                    btn.textContent = 'パスキーを登録する';
+                    return;
+                }
+
+                const attestation = {
+                    id: credential.id,
+                    rawId: bufferToBase64url(credential.rawId),
+                    type: credential.type,
+                    response: {
+                        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                        attestationObject: bufferToBase64url(credential.response.attestationObject),
+                        transports: credential.response.getTransports ? credential.response.getTransports() : []
+                    }
+                };
+
+                btn.textContent = '登録中...';
+                const verifyRes = await fetch(`/api/register/${setupToken}/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, credential: attestation })
+                });
+ 
+                const verifyData = await verifyRes.json();
+
+                if (verifyData.success) {
+                    showResult('success', verifyData.message);
+                    btn.style.display = 'none';
+                } else {
+                    showResult('error', verifyData.message);
+                    btn.disabled = false;
+                    btn.textContent = 'パスキーを登録する';
+                }
+            } catch (e) {
+                showResult('error', 'パスキーの登録に失敗しました。ブラウザの対応状況を確認してください。');
+                btn.disabled = false;
+                btn.textContent = 'パスキーを登録する';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アカウント復元</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #ffffff;
+            color: #333333;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #dddddd;
+            padding: 32px;
+            width: 100%;
+            max-width: 420px;
+        }
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #222222;
+        }
+        .subtitle {
+            font-size: 0.875rem;
+            color: #666666;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        label {
+            display: block;
+            font-size: 0.8125rem;
+            color: #555555;
+            margin-bottom: 6px;
+        }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            color: #333333;
+            font-size: 0.9375rem;
+            margin-bottom: 16px;
+            outline: none;
+        }
+        input:focus { border-color: #999999; }
+        button, .link-btn {
+            display: block;
+            width: 100%;
+            padding: 11px;
+            background: #f5f5f5;
+            color: #333333;
+            border: 1px solid #cccccc;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            margin-bottom: 10px;
+            text-align: center;
+            text-decoration: none;
+        }
+        button:hover, .link-btn:hover { background: #eeeeee; }
+        button:disabled { color: #999999; cursor: not-allowed; }
+        .divider {
+            text-align: center;
+            color: #aaaaaa;
+            font-size: 0.8125rem;
+            margin: 8px 0 16px;
+        }
+        #result {
+            margin-top: 16px;
+            padding: 12px;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            display: none;
+            border: 1px solid #dddddd;
+            background: #fafafa;
+            color: #333333;
+        }
+        .hidden { display: none; }
+        .logged-in {
+            padding: 10px 12px;
+            border: 1px solid #dddddd;
+            background: #fafafa;
+            font-size: 0.875rem;
+            margin-bottom: 16px;
+            color: #555555;
+        }
+        .note {
+            margin-top: 16px;
+            font-size: 0.75rem;
+            color: #888888;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>アカウント復元</h1>
+        <p class="subtitle" id="subtitle">新しいDiscordアカウントでログインし、登録したパスワードまたはパスキーで認証してください。</p>
+
+        <div id="discordStep">
+            <a class="link-btn" id="discordLoginBtn" href="#">Discordでログイン</a>
+        </div>
+
+        <div id="authStep" class="hidden">
+            <div class="logged-in" id="discordInfo"></div>
+            <button id="passkeyBtn" onclick="authWithPasskey()">パスキーで認証</button>
+            <div class="divider">または</div>
+            <label>パスワード</label>
+            <input type="password" id="password" autocomplete="current-password" placeholder="パスワード" title="パスワードを入力">
+            <button id="passwordBtn" onclick="authWithPassword()">パスワードで復元する</button>
+        </div>
+
+        <div id="result"></div>
+
+         <p class="note">
+             ※ 復元URLは15分間有効です。<br>
+             ※ 復元は一度のみ使用できます。<br>
+             ※ パスワードを忘れた場合は管理者に /restoration の再設定を依頼してください。
+         </p>
+    </div>
+
+    <script>
+        const sessionToken = location.pathname.split('/').pop();
+        document.getElementById('discordLoginBtn').href = `/auth/discord?session=${sessionToken}`;
+
+        function bufferToBase64url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let str = '';
+            for (const b of bytes) str += String.fromCharCode(b);
+            return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function base64urlToBuffer(base64url) {
+            const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+            const pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
+            const str = atob(base64 + pad);
+            const bytes = new Uint8Array(str.length);
+            for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+            return bytes.buffer;
+        }
+
+        function showResult(msg) {
+            const el = document.getElementById('result');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function showAuthStep(username) {
+            document.getElementById('discordStep').classList.add('hidden');
+            document.getElementById('authStep').classList.remove('hidden');
+            document.getElementById('discordInfo').textContent = `ログイン中: ${username}`;
+            document.getElementById('subtitle').textContent = '登録したパスワードまたはパスキーで認証すると、自動で役職が復元されます。';
+        }
+
+        async function refreshStatus() {
+            try {
+                const res = await fetch(`/api/recover/${sessionToken}/status`, { credentials: 'same-origin' });
+                const data = await res.json();
+                if (data.discordLinked) {
+                    showAuthStep(data.discordUsername);
+                }
+                if (data.authenticated) {
+                    showResult('認証が完了しました。');
+                }
+            } catch {}
+        }
+
+        async function authWithPasskey() {
+            const btn = document.getElementById('passkeyBtn');
+            btn.disabled = true;
+            btn.textContent = '認証中...';
+
+            try {
+                const optionsRes = await fetch(`/api/recover/${sessionToken}/auth/options`, {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                const options = await optionsRes.json();
+                if (!optionsRes.ok || options.success === false) {
+                    showResult(options.message || '認証オプションの取得に失敗しました。');
+                    btn.disabled = false;
+                    btn.textContent = 'パスキーで認証';
+                    return;
+                }
+
+                options.challenge = base64urlToBuffer(options.challenge);
+                if (options.allowCredentials) {
+                    options.allowCredentials = options.allowCredentials.map(c => ({
+                        ...c,
+                        id: base64urlToBuffer(c.id)
+                    }));
+                }
+
+                const credential = await navigator.credentials.get({ publicKey: options });
+                const assertion = {
+                    id: credential.id,
+                    rawId: bufferToBase64url(credential.rawId),
+                    type: credential.type,
+                    response: {
+                        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+                        signature: bufferToBase64url(credential.response.signature),
+                        userHandle: credential.response.userHandle
+                            ? bufferToBase64url(credential.response.userHandle)
+                            : null
+                    }
+                };
+
+                const verifyRes = await fetch(`/api/recover/${sessionToken}/auth/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ credential: assertion })
+                });
+                const verifyData = await verifyRes.json();
+
+                if (verifyData.success) {
+                    showResult(verifyData.message || '復元が完了しました。');
+                    document.getElementById('authStep').classList.add('hidden');
+                } else {
+                    showResult(verifyData.message);
+                    btn.disabled = false;
+                    btn.textContent = 'パスキーで認証';
+                }
+            } catch (e) {
+                showResult('パスキー認証に失敗しました。');
+                btn.disabled = false;
+                btn.textContent = 'パスキーで認証';
+            }
+        }
+
+        async function authWithPassword() {
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('passwordBtn');
+
+            if (!password) {
+                showResult('パスワードを入力してください。');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '復元中...';
+
+            try {
+                const res = await fetch(`/api/recover/${sessionToken}/auth/password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showResult(data.message || '復元が完了しました。');
+                    document.getElementById('authStep').classList.add('hidden');
+                } else {
+                    showResult(data.message);
+                    btn.disabled = false;
+                    btn.textContent = 'パスワードで復元する';
+                }
+            } catch (e) {
+                showResult('通信エラーが発生しました。');
+                btn.disabled = false;
+                btn.textContent = 'パスワードで復元する';
+            }
+        }
+
+        refreshStatus();
+    </script>
+</body>
+</html>
