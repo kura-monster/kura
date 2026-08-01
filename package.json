@@ -1,7 +1,7 @@
 {
   "name": "@kura-lang/compiler",
   "version": "1.0.0",
-  "description": "Kura v1 compiler and CLI",
+  "description": "Kura v1 compiler and CLI with Velocity Engine, Security Shield, and friendly diagnostics",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
@@ -10,7 +10,9 @@
   "exports": {
     ".": "./lib/compiler.mjs",
     "./runtime/gpu": "./runtime/gpu.mjs",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./diagnostics": "./lib/diagnostics.mjs",
+    "./security": "./lib/security.mjs"
   },
   "files": [
     "bin",
@@ -21,7 +23,11 @@
     "LICENSE",
     "LICENSE-MIT",
     "LICENSE-APACHE",
-    "NOTICE"
+    "NOTICE",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "docs"
   ],
   "engines": {
     "node": ">=20"
@@ -30,7 +36,11 @@
     "kura",
     "compiler",
     "programming-language",
-    "cli"
+    "cli",
+    "security",
+    "diagnostics",
+    "sandbox",
+    "friendly-errors"
   ],
   "repository": {
     "type": "git",
@@ -41,6 +51,10 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/smoke.mjs && node test/velocity.mjs"
+    "test": "node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs",
+    "test:security": "node test/security.mjs",
+    "test:diagnostics": "node test/diagnostics.mjs",
+    "check:package": "npm pack --dry-run --json",
+    "prepack": "npm test"
   }
 }
