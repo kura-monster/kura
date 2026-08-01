@@ -7,17 +7,32 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: kura-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Node ${{ matrix.node-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node-version: [20, 22, 24]
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci --ignore-scripts
       - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm pack --dry-run --json
       - run: node bin/kr.mjs --version
       - run: node bin/kr.mjs doctor
+      - run: node bin/kr.mjs security status
