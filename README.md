@@ -1,27 +1,64 @@
 # Kura v1.0.0
 
-Install:
+Kura is a security-focused programming language and toolchain for `.kr` files. The v1 line combines the compiler CLI, Security Shield, friendly diagnostics, Velocity Engine, package management, batteries-included standard libraries, formatter, test runner, AI primitives, hot reload, standalone builds, and Language Server support.
+
+## Install the hosted stable CLI
 
 ```powershell
-npm install -g https://kr.klyn.site/Kura-v1.tgz
+npm uninstall -g @kura-lang/compiler
+npm cache clean --force
+npm install -g "https://kr.klyn.site/Kura-v1.0.0-security.tgz"
+
 kr --version
-kr new hello
-cd hello
-kr run
+kr doctor
 ```
 
-Commands: `new`, `run`, `build`, `check`, `fmt`, `bindgen`, `sql-check`, `gpu doctor`, `gpu init`, `doctor`, `version`.
+## VS Code
 
-## Security Shield
+The Kura VS Code LSP MVP provides syntax highlighting, completion, real-time diagnostics, hover, signature help, go to definition, symbols, formatting, and Run/Check commands.
 
-Run trusted projects normally:
+```powershell
+$vsix = "$HOME\Downloads\Kura-VSCode-LSP-MVP-0.1.0.vsix"
+Invoke-WebRequest `
+  "https://kr.klyn.site/releases/Kura-VSCode-LSP-MVP-0.1.0.vsix" `
+  -OutFile $vsix
+code --install-extension $vsix --force
+```
+
+VSIX SHA-256:
+
+```text
+8f8bcc1cff6109a4bef154677add4db7e04cc3d1b0d34fd11109913b72e06d16
+```
+
+## Implemented v1 toolchain
+
+- Compiler and `kr` CLI
+- Security Shield and `kr run --secure`
+- Friendly diagnostics with stable error codes
+- Velocity Engine and `kr bench`
+- Script-free package manager with lockfile and integrity verification
+- Batteries-included `std:` modules
+- Built-in formatter and test runner
+- `Kura.ai` and `std:"ai"`
+- `kr dev` hot reload server
+- `kr build --standalone`
+- `kr lsp --stdio`
+- VS Code LSP MVP
+
+## Development
+
+Requirements: Node.js 20 or newer.
 
 ```bash
-kr check
-kr run
+npm test
+node bin/kr.mjs --version
+node bin/kr.mjs doctor
 ```
 
-Use strict mode for reviewed code that should receive minimal capabilities:
+The repository is the public development home for Kura. Complete reviewed source snapshots are also distributed as ZIP archives with SHA-256 checksums.
+
+## Security
 
 ```bash
 kr check --secure
@@ -29,19 +66,14 @@ kr run --secure
 kr security audit
 ```
 
-Kura blocks remote executable imports, unsafe configuration paths, symbolic-link output attacks, cache tampering, `NODE_OPTIONS` injection, and oversized compiler inputs. Strict mode also uses Node permissions, filters sensitive environment variables, disables native addons, and applies time and memory limits.
-
-Strict mode is defense in depth rather than a complete OS sandbox. Use a disposable container or virtual machine for hostile code.
-
-## Friendly error messages
-
-```bash
-kr check
-kr check --json
-kr check --verbose
-```
-
-Human diagnostics include a stable error code, source location, code frame, caret, explanation, and repair hint. JSON mode is suitable for editors and CI.
+Strict mode is defense in depth rather than a complete operating-system sandbox. Use a disposable container or virtual machine for hostile code.
 
 - [Security guide](docs/SECURITY.md)
 - [Diagnostics guide](docs/DIAGNOSTICS.md)
+- [Official documentation](https://kr.klyn.site/docs)
+- [VS Code documentation](https://kr.klyn.site/vscode)
+- [Downloads](https://kr.klyn.site/download)
+
+## License
+
+Kura is dual-licensed under **MIT OR Apache-2.0**. See `LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE`, and `NOTICE`.
