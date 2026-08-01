@@ -1,11 +1,6 @@
 Kura is dual-licensed under either of the following licenses, at your option:
 
-- MIT License
-- Apache License, Version 2.0
+- Apache License, Version 2.0 (see LICENSE-APACHE)
+- MIT License (see LICENSE-MIT)
 
 SPDX-License-Identifier: MIT OR Apache-2.0
-
-The complete license texts are included in the source archive as LICENSE-MIT and LICENSE-APACHE.
-
-MIT license text: https://opensource.org/license/mit
-Apache License 2.0 text: https://www.apache.org/licenses/LICENSE-2.0.txt

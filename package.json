@@ -1,0 +1,46 @@
+{
+  "name": "@kura-lang/compiler",
+  "version": "1.0.0",
+  "description": "Kura v1 compiler and CLI",
+  "license": "(MIT OR Apache-2.0)",
+  "type": "module",
+  "bin": {
+    "kr": "bin/kr.mjs"
+  },
+  "exports": {
+    ".": "./lib/compiler.mjs",
+    "./runtime/gpu": "./runtime/gpu.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "runtime",
+    "templates",
+    "README.md",
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "kura",
+    "compiler",
+    "programming-language",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kura-monster/kura.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kura-monster/kura/issues"
+  },
+  "homepage": "https://kr.klyn.site/docs",
+  "scripts": {
+    "test": "node test/smoke.mjs && node test/velocity.mjs"
+  }
+}

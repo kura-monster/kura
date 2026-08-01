@@ -1,0 +1,6 @@
+{
+  "name": "kura-app",
+  "version": "0.1.0",
+  "entry": "src/main.kr",
+  "target": "node"
+}
