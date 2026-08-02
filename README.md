@@ -1,34 +1,37 @@
 # Kura v1.0.0
 
-Kura is a security-focused programming language and toolchain for `.kr` files. The v1 line combines the compiler CLI, Security Shield, friendly diagnostics, Velocity Engine, package management, batteries-included standard libraries, formatter, test runner, AI primitives, hot reload, standalone builds, and Language Server support.
+Kura is a programming language and complete CLI toolchain for `.kr` files. The v1 line combines the compiler, Security Shield, friendly diagnostics, Velocity Engine, package management, batteries-included standard libraries, formatter, test runner, AI primitives, hot reload, standalone builds, and an editor-independent Language Server.
 
-## Install the hosted stable CLI
+## Install
 
-```powershell
+Kura is officially distributed as the npm package `@kura-lang/compiler`.
+Until the public npm Registry release is published, install the verified package tarball through npm:
+
+```bash
 npm uninstall -g @kura-lang/compiler
-npm cache clean --force
-npm install -g "https://kr.klyn.site/Kura-v1.0.0-security.tgz"
+npm install -g "https://kr.klyn.site/releases/kura-lang-compiler-1.0.0.tgz"
 
 kr --version
 kr doctor
 ```
 
-## VS Code
-
-The Kura VS Code LSP MVP provides syntax highlighting, completion, real-time diagnostics, hover, signature help, go to definition, symbols, formatting, and Run/Check commands.
-
-```powershell
-$vsix = "$HOME\Downloads\Kura-VSCode-LSP-MVP-0.1.0.vsix"
-Invoke-WebRequest `
-  "https://kr.klyn.site/releases/Kura-VSCode-LSP-MVP-0.1.0.vsix" `
-  -OutFile $vsix
-code --install-extension $vsix --force
-```
-
-VSIX SHA-256:
+Official package metadata:
 
 ```text
-8f8bcc1cff6109a4bef154677add4db7e04cc3d1b0d34fd11109913b72e06d16
+Package: @kura-lang/compiler@1.0.0
+File: kura-lang-compiler-1.0.0.tgz
+Size: 79,399 bytes
+SHA-256: 1148da26053488f1e7b60251f96b892ed746fc234de1ac5017260cd73138d1c4
+```
+
+## First project
+
+```bash
+kr new hello
+cd hello
+kr check
+kr run
+kr test
 ```
 
 ## Implemented v1 toolchain
@@ -43,8 +46,18 @@ VSIX SHA-256:
 - `Kura.ai` and `std:"ai"`
 - `kr dev` hot reload server
 - `kr build --standalone`
-- `kr lsp --stdio`
-- VS Code LSP MVP
+- Editor-independent Language Server through `kr lsp --stdio`
+
+## Editor integration
+
+Kura officially supports the CLI and generic Language Server rather than a specific editor extension.
+Configure the following command in an LSP-compatible editor:
+
+```bash
+kr lsp --stdio
+```
+
+The former Kura VS Code 0.1.0 and 0.1.1 extensions are preserved only as archived experiments on the official website.
 
 ## Development
 
@@ -56,7 +69,7 @@ node bin/kr.mjs --version
 node bin/kr.mjs doctor
 ```
 
-The repository is the public development home for Kura. Complete reviewed source snapshots are also distributed as ZIP archives with SHA-256 checksums.
+The repository is the public development home for Kura. Release tarballs are reproducibly generated, SHA-256 verified, synchronized to managed storage, and exposed through the official Download Center.
 
 ## Security
 
@@ -71,8 +84,8 @@ Strict mode is defense in depth rather than a complete operating-system sandbox.
 - [Security guide](docs/SECURITY.md)
 - [Diagnostics guide](docs/DIAGNOSTICS.md)
 - [Official documentation](https://kr.klyn.site/docs)
-- [VS Code documentation](https://kr.klyn.site/vscode)
-- [Downloads](https://kr.klyn.site/download)
+- [Download Center](https://kr.klyn.site/download)
+- [VS Code experiment archive](https://kr.klyn.site/vscode)
 
 ## License
 
