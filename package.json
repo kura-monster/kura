@@ -1,7 +1,7 @@
 {
   "name": "@kura-lang/compiler",
   "version": "1.0.0",
-  "description": "Kura v1 compiler and CLI with Velocity Engine, Security Shield, and friendly diagnostics",
+  "description": "Kura v1 compiler and complete CLI with package manager, standard library, formatter, tests, Security Shield, Kura.ai, hot reload, standalone builds, and a generic language server",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
@@ -37,9 +37,13 @@
     "compiler",
     "programming-language",
     "cli",
+    "package-manager",
+    "standard-library",
+    "formatter",
+    "test-runner",
+    "language-server",
     "security",
     "diagnostics",
-    "sandbox",
     "friendly-errors"
   ],
   "repository": {
