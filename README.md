@@ -20,8 +20,8 @@ Official package metadata:
 ```text
 Package: @kura-lang/compiler@1.0.0
 File: kura-lang-compiler-1.0.0.tgz
-Size: 79,253 bytes
-SHA-256: 28e927f249e96972c9a09a5204894b27b4a2573eacab9d333b5e56ead4badf93
+Size: 79,259 bytes
+SHA-256: 3378cd9f0a58d3f27edbb6af1c526e58c0939dceb55f387a709780822ec93d3f
 ```
 
 ## First project
