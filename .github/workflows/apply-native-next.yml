@@ -25,6 +25,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          wc -c .kura/native-next.part-*
+          sha256sum .kura/native-next.part-*
           cat .kura/native-next.part-* | base64 --decode > /tmp/kura-native-next-overlay.tgz
           echo "f1bea424367dd2d7772dba09ad9639e18851197ba27a1785a2ef6a9041d19705  /tmp/kura-native-next-overlay.tgz" | sha256sum --check -
           tar -xzf /tmp/kura-native-next-overlay.tgz -C .
