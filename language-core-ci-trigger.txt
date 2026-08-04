@@ -1,1 +1,0 @@
-Validate the typed language core, RAII, generics, traits, exhaustive match, Result propagation, closures, partial move, and NLL.
