@@ -131,8 +131,8 @@ jobs:
           npm test
           node bin/kr-system.mjs check examples/system/kernel-next.kr
           node bin/kr-system.mjs build examples/system/minimal-kernel.kr --out-dir /tmp/kura-native-build
-          test -s /tmp/kura-native-build/kernel.o
-          test -s /tmp/kura-native-build/kernel.elf
+          test -s /tmp/kura-native-build/minimal-kernel.o
+          test -s /tmp/kura-native-build/minimal-kernel.elf
           npm pack --dry-run --json --ignore-scripts > /tmp/kura-pack.json
 
       - name: Commit directly to the working branch
