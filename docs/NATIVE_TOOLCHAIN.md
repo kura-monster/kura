@@ -43,9 +43,22 @@ build/system/kura-linker.ld
 build/system/kernel.elf
 ```
 
+The output basename follows the source filename. For example, building `minimal-kernel.kr` creates `minimal-kernel.ll`, `minimal-kernel.o`, and `minimal-kernel.elf`.
+
 An ISO build also produces:
 
 ```text
 build/system/iso-root/
 build/system/kernel.iso
 ```
+
+## Validation
+
+The native update pipeline verifies the complete path with a real freestanding kernel:
+
+```bash
+kr-system check examples/system/kernel-next.kr
+kr-system build examples/system/minimal-kernel.kr --out-dir /tmp/kura-native-build
+```
+
+Validation requires both the generated object file and linked ELF file to be non-empty. The package regression suite and npm package dry-run are executed in the same pipeline before changes are pushed to the working branch.
