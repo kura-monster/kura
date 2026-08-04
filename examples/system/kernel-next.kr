@@ -1,0 +1,56 @@
+#![target("x86_64-unknown-none")]
+#![no_std]
+#![no_main]
+#![multiboot2]
+
+const VGA_BASE: usize = 0xB8000
+const DEFAULT_COLOR: u8 = (1 << 4) | 15
+const COM1: u16 = 0x3F8
+
+@repr(C)
+struct VgaCell {
+  character: u8,
+  color: u8,
+}
+
+@repr(C)
+struct InterruptFrame {
+  instruction_pointer: u64,
+  code_segment: u64,
+  cpu_flags: u64,
+  stack_pointer: u64,
+  stack_segment: u64,
+}
+
+@section(".data.boot")
+@align(8)
+static mut TICKS: u64 = 0
+
+extern "C" fn platform_probe(value: u32) -> u32;
+
+unsafe fn write_cell(index: usize, character: u8, color: u8) {
+  let cells: *mut VgaCell = pointer.from_address<VgaCell>(VGA_BASE)
+  let cell: *mut VgaCell = cells.offset(index)
+  cell.character = character
+  cell.color = color
+}
+
+@interrupt
+pub extern "x86-interrupt" fn timer_interrupt(frame: *mut InterruptFrame) {
+  TICKS += 1
+  unsafe { io.out8(0x20, 0x20) }
+}
+
+@entry
+@section(".text.boot")
+pub extern "C" fn kernel_main() -> never {
+  unsafe {
+    io.out8(COM1 + 1, 0)
+    write_cell(0, 75, DEFAULT_COLOR)
+    write_cell(1, 117, DEFAULT_COLOR)
+    write_cell(2, 114, DEFAULT_COLOR)
+    write_cell(3, 97, DEFAULT_COLOR)
+    cpu.disable_interrupts()
+    cpu.halt()
+  }
+}

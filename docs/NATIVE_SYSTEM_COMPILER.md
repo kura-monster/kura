@@ -1,135 +1,88 @@
 # Kura Native System Compiler
 
-The native system compiler is the next freestanding compilation path for Kura. It is separate from the JavaScript backend and targets machines where Node.js and an operating system do not exist.
+Kura now contains a freestanding x86_64 compilation path that is independent from Node.js at runtime.
 
-## Current target
+## Supported target
 
 ```text
 x86_64-unknown-none
 ```
 
-The compiler emits LLVM IR with the x86_64 freestanding target triple and data layout.
+## Source features
+
+- `#![no_std]`, `#![no_main]`, `#![target(...)]`, and `#![multiboot2]`
+- `@entry`, `@repr(C)`, `@repr(packed)`, `@section`, `@align`, `@link_name`, and `@interrupt`
+- fixed-width integers, `usize`, `isize`, bool, arrays, named structures, and raw pointers
+- compile-time constants with arithmetic, comparison, shifts, and bitwise operations
+- immutable and mutable global statics
+- external function declarations
+- C and x86 interrupt ABIs
+- local variables, branches, loops, function calls, and typed returns
+- raw and volatile memory operations
+- typed MMIO structure access
+- x86 CPU and I/O-port intrinsics
 
 ## CLI
 
 ```bash
-kr-system check examples/system/native-kernel.kr
-kr-system emit-llvm examples/system/native-kernel.kr -o kernel.ll
-kr-system layout examples/system/native-kernel.kr
-kr-system ast examples/system/native-kernel.kr
+kr-system check kernel.kr
+kr-system emit-llvm kernel.kr -o kernel.ll
+kr-system emit-object kernel.kr -o kernel.o
+kr-system link-elf kernel.o -o kernel.elf
+kr-system build kernel.kr --out-dir build/system
+kr-system emit-iso kernel.elf -o kernel.iso
+kr-system run-qemu kernel.elf
+kr-system toolchain
 ```
 
-`check` performs parsing, type checking, unsafe validation, structure layout validation, and LLVM lowering without writing an output file.
+`build` runs the complete Kura source -> LLVM IR -> object -> ELF pipeline.
 
-## Implemented source features
-
-- `#![target("x86_64-unknown-none")]`
-- `#![no_std]`
-- `#![no_main]`
-- `@entry`
-- `@repr(C)` and `@repr(packed)`
-- `pub`, `unsafe`, and `extern "C"` functions
-- fixed-width integer types
-- `usize`, `isize`, `bool`, `void`, and `never`
-- `*const T` and `*mut T`
-- local variables and immutable constants
-- assignment and compound assignment
-- integer arithmetic and comparisons
-- `if` and `while`
-- typed function calls and return values
-- address-of and raw-pointer dereference
-- structure field access through values and raw pointers
-- C-compatible structure size, alignment, field offsets, and padding
-
-## Memory operations
+## Compile-time constants
 
 ```kr
-unsafe {
-  let value: u32 = memory.read<u32>(0x1000)
-  memory.write<u32>(0x1000, value)
-  let status: u8 = memory.volatile_read<u8>(0x3F8)
-  memory.volatile_write<u8>(0xB8000, 75)
-}
+const VGA_BASE: usize = 0xB8000
+const COLOR: u8 = (1 << 4) | 15
 ```
 
-Raw memory operations are rejected outside an unsafe block or unsafe function.
+Constant evaluation supports integer arithmetic, bitwise operations, shifts, comparisons, and references to other constants. Cycles and division by zero are rejected before LLVM lowering.
 
-## Raw pointers
+## Globals
 
 ```kr
-unsafe {
-  let bytes: *mut u8 = pointer.from_address<u8>(0xB8000)
-  bytes.write(75)
-  bytes.offset(1).volatile_write(15)
-  let first: u8 = bytes.read()
-}
+@section(".data.boot")
+@align(8)
+static mut TICKS: u64 = 0
 ```
 
-Supported pointer methods are:
+Mutable statics lower to LLVM globals. Immutable statics lower to LLVM constants. Global assignments are type checked.
 
-- `read()`
-- `volatile_read()`
-- `write(value)`
-- `volatile_write(value)`
-- `offset(index)`
-
-Writes through `*const T` are rejected.
-
-## MMIO structures
+## External and interrupt functions
 
 ```kr
-@repr(C)
-struct UartRegisters {
-  data: u8,
-  interrupt_enable: u8,
-  interrupt_identification: u8,
-  line_control: u8,
-}
+@link_name("firmware_probe")
+extern "C" fn probe(value: u32) -> u32;
 
-unsafe fn send(byte: u8) {
-  let uart: *mut UartRegisters = pointer.from_address<UartRegisters>(0x3F8)
-  uart.data = byte
+@interrupt
+pub extern "x86-interrupt" fn timer(frame: *mut InterruptFrame) {
+  unsafe { io.out8(0x20, 0x20) }
 }
 ```
 
-Structure member access lowers to LLVM `getelementptr`. This provides the basis for typed memory-mapped device registers.
+Interrupt handlers lower with LLVM's `x86_intrcc` calling convention and cannot be called as ordinary functions.
 
-## CPU operations
+## I/O ports
+
+Inside an unsafe context:
 
 ```kr
-unsafe {
-  cpu.disable_interrupts()
-  cpu.pause()
-  cpu.enable_interrupts()
-  cpu.breakpoint()
-  cpu.halt()
-}
+let byte: u8 = io.in8(0x60)
+io.out8(0x3F8, byte)
+io.out16(0x1F0, 0x1234)
+io.out32(0xCF8, 0x80000000)
 ```
 
-These lower to the x86 instructions `cli`, `pause`, `sti`, `int3`, and `hlt` through side-effecting inline assembly.
+## Multiboot2 and linking
 
-## Example kernel
+`#![multiboot2]` emits a valid Multiboot2 header in `.multiboot2`. The generated linker script keeps that section first, places the kernel at 1 MiB, aligns code/data sections to 4 KiB, and discards host-only metadata.
 
-`examples/system/native-kernel.kr` demonstrates:
-
-- a C-layout VGA cell structure
-- pointer creation from the VGA text-memory address
-- pointer arithmetic
-- typed field stores
-- normal Kura functions
-- arithmetic and comparison
-- an entry point that halts the CPU
-
-## LLVM pipeline
-
-```text
-Kura source
-  -> native tokenizer
-  -> native AST
-  -> type and unsafe validation
-  -> structure layout
-  -> typed control-flow lowering
-  -> LLVM IR
-```
-
-The next compiler stage will invoke LLVM tools to produce freestanding object files and linkable ELF output. Following stages will add globals, constant evaluation, external declarations, interrupt calling conventions, linker scripts, and boot-image generation.
+The toolchain uses `llc` when available and falls back to `clang`. ELF linking uses `ld.lld` or GNU `ld`. ISO creation requires `grub-mkrescue`; QEMU execution requires `qemu-system-x86_64`.
