@@ -21,11 +21,30 @@ jobs:
           ref: agent/system-foundation-0.1
           fetch-depth: 0
 
-      - name: Verify and apply implementation bundle
+      - name: Restore TGZ runtime baseline
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/kura-chunks.sha256 <<'SUMS'
+          cat > /tmp/kura-runtime-chunks.sha256 <<'SUMS'
+          d34c6fff716dd7e9887433924a54a30d19f2357c7a4382db733c230b9e07d093  .kura/runtime-base.part-00
+          7ca97f5a19fe446b73cb9166e63b3e469d91482e8705dc7e2ca181b78b4461ad  .kura/runtime-base.part-01
+          57f779662a7dab0b26e822bdc707de48e40a478c40f17065630b016efff472db  .kura/runtime-base.part-02
+          d50cb764c8a4f071c30e48665a34c5b82052500c889bf0cf116758b20b515018  .kura/runtime-base.part-03
+          2d486f9e4b90595bfcd831d60144d3d465ed90d4f30fbe6ece03648b7742c1e9  .kura/runtime-base.part-04
+          ca2bd11f0c20eee8818cd84ffc7900df111b75d31983c9185d5f6ca69f043575  .kura/runtime-base.part-05
+          e5a8213c8b7b4ed4fc17adfd8d3633669eff895dcc0b27ec40374b55a3c1717e  .kura/runtime-base.part-06
+          1177be5f08b7736b96708d8d23f6b08f51bd9f31b1549cb58695f13475fe9cec  .kura/runtime-base.part-07
+          SUMS
+          sha256sum --check /tmp/kura-runtime-chunks.sha256
+          cat .kura/runtime-base.part-* | base64 --decode > /tmp/kura-runtime-overlay.tgz
+          echo "62580a3911aebbd4d1586b6fe29ac944c0c08d44801f5b11ac6055123e3691e3  /tmp/kura-runtime-overlay.tgz" | sha256sum --check -
+          tar -xzf /tmp/kura-runtime-overlay.tgz -C .
+
+      - name: Apply native implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/kura-native-chunks.sha256 <<'SUMS'
           23157734199c7da97828bd3243e36ce7fef9ec4c286f2954f7271a138bbe66a8  .kura/native-next.part-00
           d837e57c0011cadefee7b68aaa99a24c6d91e0d11d907f2dd2ac86608548023e  .kura/native-next.part-01
           9f432bad7c5ad135510a44969b5cae4374a32bd443255b8480eb84c8e45baa2b  .kura/native-next.part-02
@@ -38,7 +57,7 @@ jobs:
           55da41c80a2e7d8cd85425b5a611a69c5d7de23d3cc2f769ef9b01f5d4546460  .kura/native-next.part-07-ac
           73bbb4541c7c08cf7e7f2b0fc55d009e9cba40103bbff3f0984bfeff5f61faee  .kura/native-next.part-07-ad
           SUMS
-          sha256sum --check /tmp/kura-chunks.sha256
+          sha256sum --check /tmp/kura-native-chunks.sha256
           cat \
             .kura/native-next.part-00 \
             .kura/native-next.part-01 \
@@ -69,6 +88,8 @@ jobs:
           npm test
           node bin/kr-system.mjs check examples/system/kernel-next.kr
           node bin/kr-system.mjs build examples/system/minimal-kernel.kr --out-dir /tmp/kura-native-build
+          test -s /tmp/kura-native-build/kernel.o
+          test -s /tmp/kura-native-build/kernel.elf
           npm pack --dry-run --json --ignore-scripts > /tmp/kura-pack.json
 
       - name: Commit directly to the working branch
@@ -76,7 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -f .github/workflows/apply-native-next.yml
-          rm -f .kura/native-next.part-*
+          rm -f .kura/*
           rmdir .kura 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
