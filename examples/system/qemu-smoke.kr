@@ -1,0 +1,274 @@
+#![target("x86_64-unknown-none")]
+#![no_std]
+#![no_main]
+
+const GDT_BASE: usize = 0x1000
+const GDT_DESCRIPTOR: usize = 0x1100
+const IDT_BASE: usize = 0x2000
+const IDT_DESCRIPTOR: usize = 0x3000
+const PML4_BASE: usize = 0x4000
+const PDPT_BASE: usize = 0x5000
+const PAGE_DIRECTORY_BASE: usize = 0x6000
+const PAGE_SIZE: usize = 0x1000
+const HUGE_PAGE_SIZE: usize = 0x200000
+const HEAP_BASE: usize = 0x1000000
+const HEAP_SIZE: usize = 0x200000
+const FRAME_START: usize = 0x2000000
+const FRAME_END: usize = 0x8000000
+const COM1: u16 = 0x3F8
+const PIC1_COMMAND: u16 = 0x20
+const PIC1_DATA: u16 = 0x21
+const PIC2_COMMAND: u16 = 0xA0
+const PIC2_DATA: u16 = 0xA1
+const APIC_BASE_MSR: u32 = 0x1B
+const APIC_ENABLE: u64 = 0x800
+const APIC_SPURIOUS: usize = 0xF0
+const APIC_EOI: usize = 0xB0
+
+static mut NEXT_FRAME: usize = FRAME_START
+static mut FRAME_LIMIT: usize = FRAME_END
+static mut HEAP_NEXT: usize = HEAP_BASE
+static mut HEAP_END: usize = HEAP_BASE + HEAP_SIZE
+static mut TIMER_TICKS: u64 = 0
+
+@repr(C)
+struct InterruptFrame {
+    instruction_pointer: u64,
+    code_segment: u64,
+    cpu_flags: u64,
+    stack_pointer: u64,
+    stack_segment: u64,
+}
+
+extern "C" fn kura_boot_info() -> usize;
+
+unsafe fn zero_region(base: usize, bytes: usize) {
+    let offset: usize = 0
+    while offset < bytes {
+        memory.write<u64>(base + offset, 0)
+        offset += 8
+    }
+}
+
+unsafe fn serial_init() {
+    io.out8(COM1 + 1, 0)
+    io.out8(COM1 + 3, 0x80)
+    io.out8(COM1, 3)
+    io.out8(COM1 + 1, 0)
+    io.out8(COM1 + 3, 3)
+    io.out8(COM1 + 2, 0xC7)
+    io.out8(COM1 + 4, 0x0B)
+}
+
+unsafe fn serial_write_byte(value: u8) {
+    io.out8(COM1, value)
+    io.out8(0xE9, value)
+}
+
+unsafe fn init_gdt() {
+    zero_region(GDT_BASE, 0x100)
+    memory.write<u64>(GDT_BASE, 0)
+    memory.write<u64>(GDT_BASE + 8, 0x00AF9A000000FFFF)
+    memory.write<u64>(GDT_BASE + 16, 0x00AF92000000FFFF)
+    memory.write<u16>(GDT_DESCRIPTOR, 23)
+    memory.write<u64>(GDT_DESCRIPTOR + 2, GDT_BASE)
+    cpu.load_gdt(GDT_DESCRIPTOR)
+    cpu.reload_kernel_segments()
+}
+
+unsafe fn write_idt_gate(index: usize, handler: usize, attributes: u8) {
+    let entry: usize = IDT_BASE + index * 16
+    memory.write<u16>(entry, handler & 0xFFFF)
+    memory.write<u16>(entry + 2, 0x08)
+    memory.write<u8>(entry + 4, 0)
+    memory.write<u8>(entry + 5, attributes)
+    memory.write<u16>(entry + 6, (handler >> 16) & 0xFFFF)
+    memory.write<u32>(entry + 8, (handler >> 32) & 0xFFFFFFFF)
+    memory.write<u32>(entry + 12, 0)
+}
+
+unsafe fn init_idt() {
+    zero_region(IDT_BASE, 4096)
+    write_idt_gate(0, function.address(divide_by_zero), 0x8E)
+    write_idt_gate(3, function.address(breakpoint_handler), 0x8F)
+    write_idt_gate(6, function.address(invalid_opcode), 0x8E)
+    write_idt_gate(8, function.address(double_fault), 0x8E)
+    write_idt_gate(13, function.address(general_protection), 0x8E)
+    write_idt_gate(14, function.address(page_fault), 0x8E)
+    write_idt_gate(32, function.address(timer_interrupt), 0x8E)
+    write_idt_gate(33, function.address(keyboard_interrupt), 0x8E)
+    memory.write<u16>(IDT_DESCRIPTOR, 4095)
+    memory.write<u64>(IDT_DESCRIPTOR + 2, IDT_BASE)
+    cpu.load_idt(IDT_DESCRIPTOR)
+}
+
+unsafe fn init_pic() {
+    let master_mask: u8 = io.in8(PIC1_DATA)
+    let slave_mask: u8 = io.in8(PIC2_DATA)
+    io.out8(PIC1_COMMAND, 0x11)
+    io.wait()
+    io.out8(PIC2_COMMAND, 0x11)
+    io.wait()
+    io.out8(PIC1_DATA, 0x20)
+    io.wait()
+    io.out8(PIC2_DATA, 0x28)
+    io.wait()
+    io.out8(PIC1_DATA, 4)
+    io.wait()
+    io.out8(PIC2_DATA, 2)
+    io.wait()
+    io.out8(PIC1_DATA, 1)
+    io.wait()
+    io.out8(PIC2_DATA, 1)
+    io.wait()
+    io.out8(PIC1_DATA, master_mask & 0xFC)
+    io.out8(PIC2_DATA, slave_mask)
+}
+
+unsafe fn pic_eoi(irq: u8) {
+    if irq >= 8 {
+        io.out8(PIC2_COMMAND, 0x20)
+    }
+    io.out8(PIC1_COMMAND, 0x20)
+}
+
+unsafe fn init_local_apic() {
+    let base: u64 = cpu.read_msr(APIC_BASE_MSR)
+    cpu.write_msr(APIC_BASE_MSR, base | APIC_ENABLE)
+    let apic: usize = base & 0xFFFFF000
+    memory.write<u32>(apic + APIC_SPURIOUS, 0x1FF)
+    memory.write<u32>(apic + APIC_EOI, 0)
+}
+
+unsafe fn init_identity_paging() {
+    zero_region(PML4_BASE, PAGE_SIZE)
+    zero_region(PDPT_BASE, PAGE_SIZE)
+    zero_region(PAGE_DIRECTORY_BASE, PAGE_SIZE)
+    memory.write<u64>(PML4_BASE, PDPT_BASE | 3)
+    memory.write<u64>(PDPT_BASE, PAGE_DIRECTORY_BASE | 3)
+    let index: usize = 0
+    while index < 512 {
+        let frame: usize = index * HUGE_PAGE_SIZE
+        memory.write<u64>(PAGE_DIRECTORY_BASE + index * 8, frame | 0x83)
+        index += 1
+    }
+    let cr4: u64 = cpu.read_cr4()
+    cpu.write_cr4(cr4 | 0x20)
+    cpu.write_cr3(PML4_BASE)
+}
+
+unsafe fn frame_allocator_init(start: usize, end: usize) {
+    NEXT_FRAME = start
+    if NEXT_FRAME < FRAME_START {
+        NEXT_FRAME = FRAME_START
+    }
+    FRAME_LIMIT = end
+    if FRAME_LIMIT > FRAME_END {
+        FRAME_LIMIT = FRAME_END
+    }
+}
+
+pub unsafe fn alloc_frame() -> usize {
+    let current: usize = NEXT_FRAME
+    if current + PAGE_SIZE > FRAME_LIMIT {
+        return 0
+    }
+    NEXT_FRAME += PAGE_SIZE
+    return current
+}
+
+unsafe fn heap_init(start: usize, bytes: usize) {
+    HEAP_NEXT = start
+    HEAP_END = start + bytes
+}
+
+pub unsafe fn heap_alloc(bytes: usize, alignment: usize) -> usize {
+    let align: usize = alignment
+    if align == 0 {
+        align = 1
+    }
+    let mask: usize = align - 1
+    let address: usize = (HEAP_NEXT + mask) & ~mask
+    if address + bytes > HEAP_END {
+        return 0
+    }
+    HEAP_NEXT = address + bytes
+    return address
+}
+
+unsafe fn exception_stop(code: u8) -> never {
+    serial_write_byte(0x45)
+    serial_write_byte(code)
+    cpu.disable_interrupts()
+    cpu.halt()
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn divide_by_zero(frame: *mut InterruptFrame) {
+    exception_stop(0)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn breakpoint_handler(frame: *mut InterruptFrame) {
+    serial_write_byte(3)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn invalid_opcode(frame: *mut InterruptFrame) {
+    exception_stop(6)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn double_fault(frame: *mut InterruptFrame, error: u64) {
+    exception_stop(8)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn general_protection(frame: *mut InterruptFrame, error: u64) {
+    exception_stop(13)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn page_fault(frame: *mut InterruptFrame, error: u64) {
+    let fault_address: u64 = cpu.read_cr2()
+    serial_write_byte(14)
+    if fault_address == 0 {
+        serial_write_byte(0)
+    }
+    exception_stop(14)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn timer_interrupt(frame: *mut InterruptFrame) {
+    TIMER_TICKS += 1
+    pic_eoi(0)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn keyboard_interrupt(frame: *mut InterruptFrame) {
+    let scan_code: u8 = io.in8(0x60)
+    if scan_code == 0 {
+        serial_write_byte(0)
+    }
+    pic_eoi(1)
+}
+
+@entry
+pub unsafe extern "C" fn kernel_main() -> never {
+    cpu.disable_interrupts()
+    serial_init()
+    serial_write_byte(0x42)
+    init_gdt()
+    init_idt()
+    init_pic()
+    init_identity_paging()
+    let boot_info: usize = kura_boot_info()
+    frame_allocator_init(FRAME_START, FRAME_END)
+    heap_init(HEAP_BASE, HEAP_SIZE)
+    if boot_info == 0 {
+        serial_write_byte(0)
+    }
+    serial_write_byte(0x53)
+    io.out32(0xF4, 16)
+    cpu.halt()
+}
