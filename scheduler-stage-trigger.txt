@@ -1,1 +1,2 @@
 Validate and commit the kernel scheduler stage directly to this branch.
+Validation base is ready.
