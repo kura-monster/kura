@@ -1,0 +1,59 @@
+name: Validate kernel scheduler stage
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+          fetch-depth: 0
+
+      - name: Apply package integration
+        run: |
+          python scripts/apply-kernel-scheduler-stage.py
+          chmod +x bin/kr-scheduler.mjs
+
+      - name: Validate scheduler and native ELF
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node --check lib/system-native-atomics.mjs
+          node --check lib/system-kernel-scheduler.mjs
+          node --check bin/kr-scheduler.mjs
+          node --check test/system-kernel-scheduler.mjs
+          npm test
+          node bin/kr-scheduler.mjs manifest --json > /tmp/kura-scheduler-manifest.json
+          node bin/kr-scheduler.mjs emit --smoke --cpus 2 -o /tmp/kura-scheduler-smoke.kr
+          node bin/kr-system.mjs check /tmp/kura-scheduler-smoke.kr
+          node bin/kr-scheduler.mjs build-generated --smoke --cpus 2 --out-dir /tmp/kura-scheduler-build
+          test -s /tmp/kura-scheduler-build/kernel.ll
+          test -s /tmp/kura-scheduler-build/kernel.o
+          test -s /tmp/kura-scheduler-build/kura-bootstrap.o
+          test -s /tmp/kura-scheduler-build/kura-context-switch.o
+          test -s /tmp/kura-scheduler-build/kernel.elf
+          readelf -s /tmp/kura-scheduler-build/kernel.elf | grep -q kura_boot_entry
+          readelf -s /tmp/kura-scheduler-build/kernel.elf | grep -q kernel_main
+          readelf -s /tmp/kura-scheduler-build/kernel.elf | grep -q kura_ap_main
+          readelf -s /tmp/kura-scheduler-build/kernel.elf | grep -q kura_context_switch
+          node bin/kr-scheduler.mjs smoke /tmp/kura-scheduler-smoke.kr --cpus 2 --out-dir /tmp/kura-scheduler-qemu --dry-run > /tmp/kura-scheduler-qemu.json
+          npm pack --dry-run --json --ignore-scripts > /tmp/kura-scheduler-pack.json
+
+      - name: Commit directly to working branch
+        run: |
+          rm -f .github/workflows/apply-kernel-scheduler-stage.yml
+          rm -f .github/workflows/validate-kernel-scheduler-stage.yml
+          rm -f scheduler-stage-trigger.txt
+          rm -f scripts/apply-kernel-scheduler-stage.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add synchronized kernel threads and scheduler"
+          git push origin HEAD:agent/system-foundation-0.1
