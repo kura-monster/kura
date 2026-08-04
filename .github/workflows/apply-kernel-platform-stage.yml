@@ -1,0 +1,74 @@
+name: Apply advanced kernel platform
+
+on:
+  push:
+    branches:
+      - agent/system-foundation-0.1
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+          fetch-depth: 0
+
+      - name: Verify and extract platform implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/kura-platform-parts.sha256 <<'SUMS'
+          826cae16efadf34858e87b3964757e0f3e43cc19b871fa7c610dbc3b38fe5d42  kura-stage/platform.part-00
+          5810d35a1149fe59a5f5d6fc636af63d53cd85e0f06f90b849fef109b728eba3  kura-stage/platform.part-01
+          f630b0be7675e29929cf8b12f5e40241ec7e12b1a39848fe05e2c9bc883e993a  kura-stage/platform.part-02
+          8273b4fc2d4f2624b532584f597b01980ec21c083a1034edcd4d4fc8bea63727  kura-stage/platform.part-03
+          54052142b05f0816940b8c0bfd4c255c08ea07cbbc8386671ebdf99fdae635f2  kura-stage/platform.part-04
+          d7c01ce41468d8f7f889b10301c8450003e1cf795499db6ea250251911853dbd  kura-stage/platform.part-05
+          SUMS
+          sha256sum --check /tmp/kura-platform-parts.sha256
+          cat kura-stage/platform.part-* | base64 --decode > /tmp/kura-platform-stage.tgz
+          echo "87938723d00809df52233a75df8a66714a77beb19aa02c65c7749fab8e39f421  /tmp/kura-platform-stage.tgz" | sha256sum --check -
+          tar -xzf /tmp/kura-platform-stage.tgz -C .
+          chmod +x bin/kr.mjs bin/kr-system.mjs bin/kr-kernel.mjs
+
+      - name: Validate compiler, platform, and boot ELF
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node --check lib/system-kernel-platform.mjs
+          node --check lib/system-native-toolchain.mjs
+          node --check bin/kr-kernel.mjs
+          node --check test/system-kernel-platform.mjs
+          npm test
+          node bin/kr-kernel.mjs manifest --json > /tmp/kura-platform-manifest.json
+          node bin/kr-kernel.mjs emit --smoke --cpus 2 -o /tmp/kura-platform-smoke.kr
+          node bin/kr-system.mjs check /tmp/kura-platform-smoke.kr
+          node bin/kr-kernel.mjs build-generated --smoke --cpus 2 --out-dir /tmp/kura-platform-build
+          test -s /tmp/kura-platform-build/generated-kernel.ll
+          test -s /tmp/kura-platform-build/generated-kernel.o
+          test -s /tmp/kura-platform-build/kura-bootstrap.o
+          test -s /tmp/kura-platform-build/generated-kernel.elf
+          readelf -h /tmp/kura-platform-build/generated-kernel.elf
+          readelf -s /tmp/kura-platform-build/generated-kernel.elf | grep -q kernel_main
+          readelf -s /tmp/kura-platform-build/generated-kernel.elf | grep -q kura_boot_entry
+          readelf -s /tmp/kura-platform-build/generated-kernel.elf | grep -q kura_ap_main
+          node bin/kr-kernel.mjs smoke /tmp/kura-platform-smoke.kr --cpus 2 --out-dir /tmp/kura-platform-qemu --dry-run --json > /tmp/kura-platform-qemu.json
+          npm pack --dry-run --json --ignore-scripts > /tmp/kura-platform-pack.json
+
+      - name: Commit directly to working branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf kura-stage
+          rm -f .github/workflows/apply-kernel-platform-stage.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add Multiboot2 memory, ACPI IOAPIC, and SMP platform"
+          git push origin HEAD:agent/system-foundation-0.1
