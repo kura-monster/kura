@@ -1,0 +1,44 @@
+trait Display {
+  fn display(self: User) -> String;
+}
+
+@partial_drop
+struct User {
+  name: String,
+  age: u32,
+}
+
+enum Lookup<T, E> {
+  Found(T),
+  Missing(E),
+}
+
+impl Drop for User {
+  fn drop(self: User) {
+    cleanup_user(self)
+  }
+}
+
+fn identity<T>(value: T) -> T where T: Send {
+  return value
+}
+
+fn lookup() -> Lookup<User, String> {
+  return Lookup::Found(User("Kura", 1))
+}
+
+fn describe(value: Lookup<User, String>) -> String {
+  return match value {
+    Lookup::Found(user) => user.name,
+    Lookup::Missing(reason) => reason,
+  }
+}
+
+fn main() -> i32 {
+  let user: User = User("Kura", 1)
+  let name = move user.name
+  let age = user.age
+  let add = |value: i32| -> i32 { age + value }
+  defer print(name)
+  return add(1)
+}
