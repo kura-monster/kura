@@ -1,1 +1,0 @@
-Validate the final directly pushed NVMe, xHCI, USB HID, VirtIO-Net, framebuffer, and expanded self-host module compiler implementation across the complete CI matrix.
