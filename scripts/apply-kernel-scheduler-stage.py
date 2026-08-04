@@ -2,6 +2,29 @@
 import json
 from pathlib import Path
 
+scheduler = Path('lib/system-kernel-scheduler.mjs')
+source = scheduler.read_text(encoding='utf-8')
+broken = """  if (regions.at(-1).end > platform.layout.heap) {
+    throw new TypeError('Scheduler metadata must remain below the kernel heap.');
+  }
+"""
+fixed = """  const schedulerEnd = Math.max(
+    layout.perCpu + layout.perCpuSize,
+    layout.taskTable + layout.taskTableSize,
+    layout.schedulerScratch + layout.schedulerScratchSize,
+    layout.slabMetadata + layout.slabMetadataSize,
+    layout.timerScratch + layout.timerScratchSize,
+  );
+  if (schedulerEnd > platform.layout.heap) {
+    throw new TypeError('Scheduler metadata must remain below the kernel heap.');
+  }
+"""
+if broken in source:
+    source = source.replace(broken, fixed, 1)
+elif fixed not in source:
+    raise SystemExit('Scheduler layout validation anchor is missing.')
+scheduler.write_text(source, encoding='utf-8')
+
 intrinsics = Path('lib/system-native-intrinsics.mjs')
 source = intrinsics.read_text(encoding='utf-8')
 import_line = "import { compileSchedulerIntrinsic } from './system-native-atomics.mjs';\n"
