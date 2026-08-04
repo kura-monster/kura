@@ -1,0 +1,1 @@
+Validate native ownership, borrow checking, lifetime contracts, Send/Sync rules, unsafe audits, and TGZ packaging.
