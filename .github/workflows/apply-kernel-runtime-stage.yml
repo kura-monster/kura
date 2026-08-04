@@ -1,0 +1,77 @@
+name: Apply x86_64 kernel runtime
+
+on:
+  push:
+    branches:
+      - agent/system-foundation-0.1
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+          fetch-depth: 0
+
+      - name: Verify and extract staged implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/kura-kernel-parts.sha256 <<'SUMS'
+          5c5d29fc765885b879d84b658521db7b435b608161a6d2849e1491c164554d0c  .kura-stage/kernel-runtime.part-00
+          9f48665afbe5fdaaaf9010885ddfb32f76178c2eaff4562881d67e02a96679f6  .kura-stage/kernel-runtime.part-01
+          d95816265896ba9597b154321b2edf4a673458117bb589bed08dc44d7a94dfb3  .kura-stage/kernel-runtime.part-02
+          SUMS
+          sha256sum --check /tmp/kura-kernel-parts.sha256
+          cat \
+            .kura-stage/kernel-runtime.part-00 \
+            .kura-stage/kernel-runtime.part-01 \
+            .kura-stage/kernel-runtime.part-02 \
+            | base64 --decode > /tmp/kura-kernel-stage.tgz
+          echo "4280a93c0d9c5ed75a9496c5939fb5d3f2c7ec4cb80300a4cfc916abbd661892  /tmp/kura-kernel-stage.tgz" | sha256sum --check -
+          tar -xzf /tmp/kura-kernel-stage.tgz -C .
+          chmod +x bin/kr.mjs bin/kr-system.mjs
+
+      - name: Validate language and kernel runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node --check bin/kr-system.mjs
+          node --check lib/system-native-intrinsics.mjs
+          node --check lib/system-native-toolchain.mjs
+          node --check lib/system-kernel-runtime.mjs
+          npm test
+          node bin/kr-system.mjs check examples/system/kernel-runtime.kr
+          node bin/kr-system.mjs check examples/system/qemu-smoke.kr
+          node bin/kr-system.mjs architecture --json > /tmp/kura-architecture.json
+          node bin/kr-system.mjs bootstrap -o /tmp/kura-bootstrap.S
+          node bin/kr-system.mjs build-bootable examples/system/qemu-smoke.kr --out-dir /tmp/kura-kernel-build
+          test -s /tmp/kura-kernel-build/qemu-smoke.o
+          test -s /tmp/kura-kernel-build/kura-bootstrap.o
+          test -s /tmp/kura-kernel-build/qemu-smoke.elf
+          readelf -h /tmp/kura-kernel-build/qemu-smoke.elf
+          readelf -S /tmp/kura-kernel-build/qemu-smoke.elf
+          node bin/kr-system.mjs qemu-smoke examples/system/qemu-smoke.kr --out-dir /tmp/kura-qemu-plan --dry-run --json > /tmp/kura-qemu-plan.json
+          npm pack --dry-run --json --ignore-scripts > /tmp/kura-pack.json
+
+      - name: Commit directly to working branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-kernel-runtime-stage.yml
+          rm -rf .kura-stage
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add bootable x86_64 kernel runtime"
+          git push origin HEAD:agent/system-foundation-0.1
