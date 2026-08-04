@@ -90,3 +90,15 @@ Strict mode is defense in depth rather than a complete operating-system sandbox.
 ## License
 
 Kura is dual-licensed under **MIT OR Apache-2.0**. See `LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE`, and `NOTICE`.
+
+
+## Native ownership and safety
+
+Kura native code can enable strict move, borrow, lifetime, Send/Sync, shared-memory, and unsafe-contract checking:
+
+```kr
+#![ownership("strict")]
+#![deny_undocumented_unsafe]
+```
+
+Use `kr-safety check <file.kr>` for strict validation and `kr-safety audit <file.kr>` for migration reports. See `docs/NATIVE_SAFETY.md`.

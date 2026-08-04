@@ -1,0 +1,35 @@
+#![target("x86_64-unknown-none")]
+#![no_std]
+#![no_main]
+#![ownership("strict")]
+#![deny_undocumented_unsafe]
+
+@must_use
+struct VgaBuffer {
+  pointer: *mut u8,
+  cells: usize,
+}
+
+extern "C" fn create_vga(pointer: *mut u8, cells: usize) -> VgaBuffer;
+
+@unsafe_contract("VGA text memory is identity-mapped during early boot")
+unsafe fn open_vga() -> VgaBuffer {
+  let address: *mut u8 = pointer.from_address<u8>(0xB8000)
+  return create_vga(address, 2000)
+}
+
+fn write_banner(buffer: *mut VgaBuffer) {
+  unsafe("the mutable borrow proves exclusive access to the VGA owner") {
+    memory.volatile_write<u8>(0xB8000, 75)
+    memory.volatile_write<u8>(0xB8001, 15)
+  }
+}
+
+@entry
+@unsafe_contract("early boot owns VGA memory and intentionally halts after the example")
+pub unsafe extern "C" fn kernel_main() -> never {
+  let buffer: VgaBuffer = open_vga()
+  write_banner(&mut buffer)
+  ownership.drop(buffer)
+  cpu.halt()
+}
