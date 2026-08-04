@@ -60,11 +60,12 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs",
+    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs",
     "test:security": "node test/security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
     "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs",
     "test:native": "node test/system-native.mjs",
+    "test:cli": "node test/cli-syntax.mjs",
     "check:package": "npm pack --dry-run --json",
     "prepack": "npm test"
   }
