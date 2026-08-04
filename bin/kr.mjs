@@ -314,8 +314,8 @@ async function buildCommand(argv) {
   const project = await resolveProject(sourceArg(argv), argv);
   await sqlGate(project.projectRoot, false, argv);
   const mode = securityMode(argv);
-  const turbo = hasFlag(argv, '--turbo'
-||| hasFlag(argv, '--release');
+  const turbo = hasFlag(argv, '--turbo')
+    || hasFlag(argv, '--release');
   const output = await compileFile(project.file, { optimize: turbo, compact: turbo, securityMode: mode });
   const outputArg = optionValue(argv, '-o');
   const destination = path.resolve(outputArg || path.join(project.projectRoot, 'build', `${path.basename(project.file, '.kr')}.mjs`));
