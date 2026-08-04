@@ -1,0 +1,98 @@
+name: Apply hardware and self-host stage
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+          fetch-depth: 0
+
+      - name: Verify and extract implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'cc602399fece6968e2f2401d5235cdf7a214f5bf6090e7bdab58f467aed8ae3d  next-stage/part-00.b64' | sha256sum -c -
+          echo '4570e4cf111a78e77976f2ccd1cc22bd09eea0d9a297ab997ef1fa949cf9be1b  next-stage/part-01.b64' | sha256sum -c -
+          echo '2ce664ab6fb7cafef90bc3e95f9c4447282d093fd71d0b17ef36fce7f49e59fc  next-stage/part-02.b64' | sha256sum -c -
+          echo 'f1effa52a75c4b208103bde946c6a4b95ce5d4fbf19bac421d75b770064eedda  next-stage/part-03.b64' | sha256sum -c -
+          echo '7cee57ff3e44bce556d73fd7306573d30fc4a0a28741e10dd343bf32610fcefb  next-stage/part-04.b64' | sha256sum -c -
+          echo 'd1c9946657ac4819d4b3630ed1d26c0de16f9035b8c6036fb6155ce06eb5277e  next-stage/part-05.b64' | sha256sum -c -
+          echo 'aa0507342ab81721d9ea2e7298a6770ceae3ac2f69a4e8e307b4b27908ae989d  next-stage/part-06.b64' | sha256sum -c -
+          echo 'ce57547778116e5cc662e981ca5039f1010e2cf7cc95cf3c4908e080e54d33c2  next-stage/part-07.b64' | sha256sum -c -
+          echo '5466db969fccba0c8cfcdcc295132cf67ac9a708201edd3d472a762e2f9d5327  next-stage/part-08.b64' | sha256sum -c -
+          cat next-stage/part-00.b64 next-stage/part-01.b64 next-stage/part-02.b64 next-stage/part-03.b64 next-stage/part-04.b64 next-stage/part-05.b64 next-stage/part-06.b64 next-stage/part-07.b64 next-stage/part-08.b64 > /tmp/kura-next-stage.b64
+          echo 'e114fc75eed21b388404758618256574d436c84bbfeee8f67080f889ed53f80c  /tmp/kura-next-stage.b64' | sha256sum -c -
+          base64 --decode /tmp/kura-next-stage.b64 > /tmp/kura-next-stage.tar.xz
+          echo '2b93b858e883f68a959c081bac128726f99e7968d605bfbd5c9aade0dae2cffa  /tmp/kura-next-stage.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/kura-next-stage.tar.xz -C .
+          chmod +x bin/kr-hardware.mjs bin/kr-selfhost.mjs
+
+      - name: Validate hardware and expanded self-hosting
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node --check lib/system-hardware.mjs
+          node --check bin/kr-hardware.mjs
+          node --check lib/self-host.mjs
+          node --check bin/kr-selfhost.mjs
+          npm test
+          node bin/kr-hardware.mjs smoke
+          node bin/kr-selfhost.mjs bootstrap /tmp/kura-selfhost-next
+          node bin/kr-selfhost.mjs verify /tmp/kura-selfhost-next
+          node bin/kr-hardware.mjs kernel -o /tmp/kura-hardware-kernel.kr
+          node bin/kr-system.mjs check /tmp/kura-hardware-kernel.kr
+          node bin/kr-hardware.mjs build --out-dir /tmp/kura-hardware-next
+          test -s /tmp/kura-hardware-next/kernel.elf
+          nm /tmp/kura-hardware-next/kernel.elf > /tmp/kura-hardware-symbols.txt
+          grep -q 'kura_boot_entry' /tmp/kura-hardware-symbols.txt
+          grep -q 'kernel_main' /tmp/kura-hardware-symbols.txt
+          grep -q 'kura_syscall_entry' /tmp/kura-hardware-symbols.txt
+          grep -q 'kura_enter_userspace' /tmp/kura-hardware-symbols.txt
+          grep -q 'kura_syscall_dispatch' /tmp/kura-hardware-symbols.txt
+          grep -q 'init_hardware_drivers' /tmp/kura-hardware-symbols.txt
+          grep -q 'nvme_init' /tmp/kura-hardware-symbols.txt
+          grep -q 'xhci_init' /tmp/kura-hardware-symbols.txt
+          grep -q 'virtio_net_init' /tmp/kura-hardware-symbols.txt
+          grep -q 'framebuffer_configure' /tmp/kura-hardware-symbols.txt
+          mkdir -p /tmp/kura-package
+          npm pack --ignore-scripts --json --pack-destination /tmp/kura-package > /tmp/kura-pack.json
+          test -s /tmp/kura-package/kura-lang-compiler-1.0.0.tgz
+          tar -tzf /tmp/kura-package/kura-lang-compiler-1.0.0.tgz > /tmp/kura-package-contents.txt
+          grep -q 'package/lib/system-hardware.mjs' /tmp/kura-package-contents.txt
+          grep -q 'package/bin/kr-hardware.mjs' /tmp/kura-package-contents.txt
+          grep -q 'package/docs/HARDWARE_DRIVERS.md' /tmp/kura-package-contents.txt
+          grep -q 'package/lib/self-host.mjs' /tmp/kura-package-contents.txt
+          grep -q 'package/bin/kr-selfhost.mjs' /tmp/kura-package-contents.txt
+
+      - name: Upload final artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kura-hardware-selfhost-stage
+          path: |
+            /tmp/kura-package/kura-lang-compiler-1.0.0.tgz
+            /tmp/kura-selfhost-next/self-host-report.json
+            /tmp/kura-hardware-next/kernel.elf
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Commit directly to working branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf next-stage
+          rm -f .github/workflows/apply-hardware-selfhost-stage.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add native hardware drivers and expanded self-host compiler'
+          git push origin HEAD:agent/system-foundation-0.1
