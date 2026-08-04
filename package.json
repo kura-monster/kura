@@ -1,12 +1,13 @@
 {
   "name": "@kura-lang/compiler",
   "version": "1.0.0",
-  "description": "Kura v1 compiler with Kura.ai, LSP, standard library, Security Shield, and a native freestanding x86_64 system-programming toolchain",
+  "description": "Kura v1 compiler with Kura.ai, LSP, standard library, Security Shield, and a bootable x86_64 multiprocessor kernel platform",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
     "kr": "bin/kr.mjs",
-    "kr-system": "bin/kr-system.mjs"
+    "kr-system": "bin/kr-system.mjs",
+    "kr-kernel": "bin/kr-kernel.mjs"
   },
   "exports": {
     ".": "./lib/compiler.mjs",
@@ -25,7 +26,8 @@
     "./ai": "./lib/ai.mjs",
     "./dev-server": "./lib/dev-server.mjs",
     "./standalone": "./lib/standalone.mjs",
-    "./lsp-server": "./lib/lsp-server.mjs"
+    "./lsp-server": "./lib/lsp-server.mjs",
+    "./system/kernel-platform": "./lib/system-kernel-platform.mjs"
   },
   "files": [
     "bin",
@@ -79,7 +81,14 @@
     "interrupts",
     "paging",
     "qemu",
-    "multiboot2"
+    "multiboot2",
+    "multiboot2-memory-map",
+    "physical-memory-manager",
+    "acpi",
+    "madt",
+    "ioapic",
+    "smp",
+    "heap-allocator"
   ],
   "repository": {
     "type": "git",
@@ -90,7 +99,7 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs",
+    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs",
     "test:security": "node test/security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
     "check:package": "npm pack --dry-run --json",
@@ -98,10 +107,11 @@
     "test:features": "node test/formatter.mjs && node test/stdlib.mjs && node test/test-runner.mjs && node test/package-manager.mjs",
     "test:next": "node test/ai.mjs && node test/dev-server.mjs && node test/standalone.mjs",
     "test:lsp": "node test/lsp.mjs",
-    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs",
-    "test:native": "node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs",
-    "test:system-next": "node test/system-next.mjs && node test/system-kernel-runtime.mjs",
+    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs",
+    "test:native": "node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs",
+    "test:system-next": "node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs",
     "test:kernel-runtime": "node test/system-kernel-runtime.mjs",
-    "test:cli": "node test/cli-syntax.mjs"
+    "test:cli": "node test/cli-syntax.mjs",
+    "test:kernel-platform": "node test/system-kernel-platform.mjs"
   }
 }

@@ -1,0 +1,1337 @@
+#![target("x86_64-unknown-none")]
+#![no_std]
+#![no_main]
+
+const GDT_BASE: usize = 0x1000
+const GDT_DESCRIPTOR: usize = 0x1100
+const IDT_BASE: usize = 0x2000
+const IDT_DESCRIPTOR: usize = 0x3000
+const PML4_BASE: usize = 0x4000
+const PDPT_BASE: usize = 0x5000
+const PAGE_DIRECTORIES_BASE: usize = 0x6000
+const PAGE_DIRECTORY_COUNT: usize = 4
+const AP_TRAMPOLINE_BASE: usize = 0xA000
+const AP_TRAMPOLINE_VECTOR: u8 = 10
+const SMP_MAILBOX: usize = 0xB000
+const PAGE_TABLE_POOL: usize = 0x800000
+const PAGE_TABLE_POOL_SIZE: usize = 0x200000
+const FRAME_BITMAP: usize = 0xA00000
+const FRAME_BITMAP_BYTES: usize = 0x20000
+const CPU_TABLE: usize = 0xA20000
+const CPU_TABLE_BYTES: usize = 0x1000
+const IRQ_OVERRIDES: usize = 0xA21000
+const PLATFORM_SCRATCH: usize = 0xA22000
+const PAGE_SIZE: usize = 0x1000
+const HUGE_PAGE_SIZE: usize = 0x200000
+const ONE_GIB: usize = 0x40000000
+const MAX_PHYSICAL: usize = 0x100000000
+const MAX_FRAMES: usize = MAX_PHYSICAL / PAGE_SIZE
+const FRAME_START: usize = 0x2000000
+const FALLBACK_FRAME_END: usize = 0x10000000
+const HEAP_BASE: usize = 0x1000000
+const HEAP_SIZE: usize = 0x800000
+const HEAP_HEADER_SIZE: usize = 32
+const HEAP_MIN_SPLIT: usize = 64
+const HEAP_MAGIC_FREE: u64 = 0x4B55524146524545
+const HEAP_MAGIC_USED: u64 = 0x4B55524155534544
+const PTE_PRESENT: u64 = 1
+const PTE_WRITABLE: u64 = 2
+const PTE_USER: u64 = 4
+const PTE_HUGE: u64 = 0x80
+const PTE_GLOBAL: u64 = 0x100
+const PTE_NO_EXECUTE: u64 = 0x8000000000000000
+const PTE_ADDRESS_MASK: u64 = 0x000FFFFFFFFFF000
+const COM1: u16 = 0x3F8
+const PIC1_COMMAND: u16 = 0x20
+const PIC1_DATA: u16 = 0x21
+const PIC2_COMMAND: u16 = 0xA0
+const PIC2_DATA: u16 = 0xA1
+const APIC_BASE_MSR: u32 = 0x1B
+const APIC_ENABLE: u64 = 0x800
+const APIC_ID: usize = 0x20
+const APIC_EOI: usize = 0xB0
+const APIC_SPURIOUS: usize = 0xF0
+const APIC_ICR_LOW: usize = 0x300
+const APIC_ICR_HIGH: usize = 0x310
+const ACPI_RSDP_SIGNATURE: u64 = 0x2052545020445352
+const ACPI_MADT_SIGNATURE: u32 = 0x43495041
+const ENABLE_SMP: u8 = 1
+const PREFER_IOAPIC: u8 = 1
+
+static mut FRAME_SCAN_INDEX: usize = FRAME_START / PAGE_SIZE
+static mut FREE_FRAMES: usize = 0
+static mut ALLOCATED_FRAMES: usize = 0
+static mut TOTAL_USABLE_BYTES: u64 = 0
+static mut HIGHEST_PHYSICAL: usize = 0
+static mut PAGE_TABLE_NEXT: usize = PAGE_TABLE_POOL
+static mut PAGE_TABLE_END: usize = PAGE_TABLE_POOL + PAGE_TABLE_POOL_SIZE
+static mut HEAP_FREE_HEAD: usize = 0
+static mut HEAP_USED_BYTES: usize = 0
+static mut HEAP_ALLOCATIONS: usize = 0
+static mut TIMER_TICKS: u64 = 0
+static mut RSDP_ADDRESS: usize = 0
+static mut MADT_ADDRESS: usize = 0
+static mut LOCAL_APIC_BASE: usize = 0
+static mut IOAPIC_BASE: usize = 0
+static mut IOAPIC_GSI_BASE: u32 = 0
+static mut CPU_COUNT: u32 = 0
+static mut BSP_APIC_ID: u32 = 0
+static mut SMP_ONLINE_CPUS: u32 = 1
+static mut INTERRUPT_MODE: u8 = 0
+
+@repr(C)
+struct InterruptFrame {
+    instruction_pointer: u64,
+    code_segment: u64,
+    cpu_flags: u64,
+    stack_pointer: u64,
+    stack_segment: u64,
+}
+
+extern "C" fn kura_boot_info() -> usize;
+
+fn align_up(value: usize, alignment: usize) -> usize {
+    if alignment <= 1 {
+        return value
+    }
+    let mask: usize = alignment - 1
+    return (value + mask) & ~mask
+}
+
+fn align_down(value: usize, alignment: usize) -> usize {
+    if alignment <= 1 {
+        return value
+    }
+    return value & ~(alignment - 1)
+}
+
+unsafe fn zero_region(base: usize, bytes: usize) {
+    let offset: usize = 0
+    while offset + 8 <= bytes {
+        memory.write<u64>(base + offset, 0)
+        offset += 8
+    }
+    while offset < bytes {
+        memory.write<u8>(base + offset, 0)
+        offset += 1
+    }
+}
+
+unsafe fn copy_region(destination: usize, source: usize, bytes: usize) {
+    let offset: usize = 0
+    while offset < bytes {
+        let value: u8 = memory.read<u8>(source + offset)
+        memory.write<u8>(destination + offset, value)
+        offset += 1
+    }
+}
+
+unsafe fn serial_init() {
+    io.out8(COM1 + 1, 0)
+    io.out8(COM1 + 3, 0x80)
+    io.out8(COM1, 3)
+    io.out8(COM1 + 1, 0)
+    io.out8(COM1 + 3, 3)
+    io.out8(COM1 + 2, 0xC7)
+    io.out8(COM1 + 4, 0x0B)
+}
+
+unsafe fn serial_write_byte(value: u8) {
+    io.out8(COM1, value)
+    io.out8(0xE9, value)
+}
+
+unsafe fn init_gdt() {
+    zero_region(GDT_BASE, 0x100)
+    memory.write<u64>(GDT_BASE, 0)
+    memory.write<u64>(GDT_BASE + 8, 0x00AF9A000000FFFF)
+    memory.write<u64>(GDT_BASE + 16, 0x00AF92000000FFFF)
+    memory.write<u16>(GDT_DESCRIPTOR, 23)
+    memory.write<u64>(GDT_DESCRIPTOR + 2, GDT_BASE)
+    cpu.load_gdt(GDT_DESCRIPTOR)
+    cpu.reload_kernel_segments()
+}
+
+unsafe fn write_idt_gate(index: usize, handler: usize, attributes: u8) {
+    let entry: usize = IDT_BASE + index * 16
+    memory.write<u16>(entry, handler & 0xFFFF)
+    memory.write<u16>(entry + 2, 0x08)
+    memory.write<u8>(entry + 4, 0)
+    memory.write<u8>(entry + 5, attributes)
+    memory.write<u16>(entry + 6, (handler >> 16) & 0xFFFF)
+    memory.write<u32>(entry + 8, (handler >> 32) & 0xFFFFFFFF)
+    memory.write<u32>(entry + 12, 0)
+}
+
+unsafe fn init_idt() {
+    zero_region(IDT_BASE, 4096)
+    write_idt_gate(0, function.address(divide_by_zero), 0x8E)
+    write_idt_gate(3, function.address(breakpoint_handler), 0x8F)
+    write_idt_gate(6, function.address(invalid_opcode), 0x8E)
+    write_idt_gate(8, function.address(double_fault), 0x8E)
+    write_idt_gate(13, function.address(general_protection), 0x8E)
+    write_idt_gate(14, function.address(page_fault), 0x8E)
+    write_idt_gate(32, function.address(timer_interrupt), 0x8E)
+    write_idt_gate(33, function.address(keyboard_interrupt), 0x8E)
+    memory.write<u16>(IDT_DESCRIPTOR, 4095)
+    memory.write<u64>(IDT_DESCRIPTOR + 2, IDT_BASE)
+    cpu.load_idt(IDT_DESCRIPTOR)
+}
+
+unsafe fn init_identity_paging() {
+    zero_region(PML4_BASE, PAGE_SIZE)
+    zero_region(PDPT_BASE, PAGE_SIZE)
+    zero_region(PAGE_DIRECTORIES_BASE, PAGE_DIRECTORY_COUNT * PAGE_SIZE)
+    memory.write<u64>(PML4_BASE, PDPT_BASE | PTE_PRESENT | PTE_WRITABLE)
+    let directory: usize = 0
+    while directory < PAGE_DIRECTORY_COUNT {
+        let directory_address: usize = PAGE_DIRECTORIES_BASE + directory * PAGE_SIZE
+        memory.write<u64>(PDPT_BASE + directory * 8, directory_address | PTE_PRESENT | PTE_WRITABLE)
+        let index: usize = 0
+        while index < 512 {
+            let frame: usize = directory * ONE_GIB + index * HUGE_PAGE_SIZE
+            memory.write<u64>(directory_address + index * 8, frame | PTE_PRESENT | PTE_WRITABLE | PTE_HUGE)
+            index += 1
+        }
+        directory += 1
+    }
+    let efer: u64 = cpu.read_msr(0xC0000080)
+    cpu.write_msr(0xC0000080, efer | 0x800)
+    let cr4: u64 = cpu.read_cr4()
+    cpu.write_cr4(cr4 | 0x20)
+    cpu.write_cr3(PML4_BASE)
+}
+
+unsafe fn page_table_pool_init() {
+    PAGE_TABLE_NEXT = PAGE_TABLE_POOL
+    PAGE_TABLE_END = PAGE_TABLE_POOL + PAGE_TABLE_POOL_SIZE
+    zero_region(PAGE_TABLE_POOL, PAGE_TABLE_POOL_SIZE)
+}
+
+unsafe fn alloc_page_table() -> usize {
+    if PAGE_TABLE_NEXT + PAGE_SIZE > PAGE_TABLE_END {
+        return 0
+    }
+    let result: usize = PAGE_TABLE_NEXT
+    PAGE_TABLE_NEXT += PAGE_SIZE
+    zero_region(result, PAGE_SIZE)
+    return result
+}
+
+unsafe fn next_page_table(table: usize, index: usize, create: bool) -> usize {
+    let entry_address: usize = table + index * 8
+    let entry: u64 = memory.read<u64>(entry_address)
+    if (entry & PTE_PRESENT) != 0 {
+        if (entry & PTE_HUGE) != 0 {
+            return 0
+        }
+        let address: usize = entry & PTE_ADDRESS_MASK
+        return address
+    }
+    if !create {
+        return 0
+    }
+    let next: usize = alloc_page_table()
+    if next == 0 {
+        return 0
+    }
+    memory.write<u64>(entry_address, next | PTE_PRESENT | PTE_WRITABLE)
+    return next
+}
+
+pub unsafe fn map_page(virtual_address: usize, physical_address: usize, flags: u64) -> bool {
+    if (virtual_address & (PAGE_SIZE - 1)) != 0 || (physical_address & (PAGE_SIZE - 1)) != 0 {
+        return false
+    }
+    let pml4_index: usize = (virtual_address >> 39) & 0x1FF
+    let pdpt_index: usize = (virtual_address >> 30) & 0x1FF
+    let pd_index: usize = (virtual_address >> 21) & 0x1FF
+    let pt_index: usize = (virtual_address >> 12) & 0x1FF
+    let pdpt: usize = next_page_table(PML4_BASE, pml4_index, true)
+    if pdpt == 0 {
+        return false
+    }
+    let pd: usize = next_page_table(pdpt, pdpt_index, true)
+    if pd == 0 {
+        return false
+    }
+    let pt: usize = next_page_table(pd, pd_index, true)
+    if pt == 0 {
+        return false
+    }
+    memory.write<u64>(pt + pt_index * 8, physical_address | flags | PTE_PRESENT)
+    cpu.invalidate_page(virtual_address)
+    return true
+}
+
+pub unsafe fn unmap_page(virtual_address: usize) -> usize {
+    let pml4_index: usize = (virtual_address >> 39) & 0x1FF
+    let pdpt_index: usize = (virtual_address >> 30) & 0x1FF
+    let pd_index: usize = (virtual_address >> 21) & 0x1FF
+    let pt_index: usize = (virtual_address >> 12) & 0x1FF
+    let pdpt: usize = next_page_table(PML4_BASE, pml4_index, false)
+    if pdpt == 0 {
+        return 0
+    }
+    let pd: usize = next_page_table(pdpt, pdpt_index, false)
+    if pd == 0 {
+        return 0
+    }
+    let pt: usize = next_page_table(pd, pd_index, false)
+    if pt == 0 {
+        return 0
+    }
+    let entry_address: usize = pt + pt_index * 8
+    let entry: u64 = memory.read<u64>(entry_address)
+    if (entry & PTE_PRESENT) == 0 {
+        return 0
+    }
+    memory.write<u64>(entry_address, 0)
+    cpu.invalidate_page(virtual_address)
+    let physical: usize = entry & PTE_ADDRESS_MASK
+    return physical
+}
+
+pub unsafe fn translate_address(virtual_address: usize) -> usize {
+    let pml4_index: usize = (virtual_address >> 39) & 0x1FF
+    let pdpt_index: usize = (virtual_address >> 30) & 0x1FF
+    let pd_index: usize = (virtual_address >> 21) & 0x1FF
+    let pt_index: usize = (virtual_address >> 12) & 0x1FF
+    let offset: usize = virtual_address & (PAGE_SIZE - 1)
+    let pdpt: usize = next_page_table(PML4_BASE, pml4_index, false)
+    if pdpt == 0 {
+        return 0
+    }
+    let pd: usize = next_page_table(pdpt, pdpt_index, false)
+    if pd == 0 {
+        return 0
+    }
+    let pd_entry: u64 = memory.read<u64>(pd + pd_index * 8)
+    if (pd_entry & PTE_PRESENT) == 0 {
+        return 0
+    }
+    if (pd_entry & PTE_HUGE) != 0 {
+        let huge_offset: usize = virtual_address & (HUGE_PAGE_SIZE - 1)
+        let base: usize = pd_entry & 0x000FFFFFFFE00000
+        return base + huge_offset
+    }
+    let pt: usize = pd_entry & PTE_ADDRESS_MASK
+    let entry: u64 = memory.read<u64>(pt + pt_index * 8)
+    if (entry & PTE_PRESENT) == 0 {
+        return 0
+    }
+    let base: usize = entry & PTE_ADDRESS_MASK
+    return base + offset
+}
+
+pub unsafe fn map_range(virtual_address: usize, physical_address: usize, bytes: usize, flags: u64) -> bool {
+    let offset: usize = 0
+    let success: bool = true
+    let length: usize = align_up(bytes, PAGE_SIZE)
+    while offset < length && success {
+        success = map_page(virtual_address + offset, physical_address + offset, flags)
+        offset += PAGE_SIZE
+    }
+    return success
+}
+
+unsafe fn bitmap_fill_used() {
+    let offset: usize = 0
+    while offset < FRAME_BITMAP_BYTES {
+        memory.write<u64>(FRAME_BITMAP + offset, 0xFFFFFFFFFFFFFFFF)
+        offset += 8
+    }
+    FREE_FRAMES = 0
+    ALLOCATED_FRAMES = 0
+    TOTAL_USABLE_BYTES = 0
+    HIGHEST_PHYSICAL = 0
+}
+
+unsafe fn frame_mark_free(address: usize) {
+    if address < FRAME_START || address >= MAX_PHYSICAL || (address & (PAGE_SIZE - 1)) != 0 {
+        return
+    }
+    let index: usize = address / PAGE_SIZE
+    let byte_address: usize = FRAME_BITMAP + index / 8
+    let bit: u8 = 1 << (index & 7)
+    let current: u8 = memory.read<u8>(byte_address)
+    if (current & bit) != 0 {
+        memory.write<u8>(byte_address, current & ~bit)
+        FREE_FRAMES += 1
+    }
+}
+
+unsafe fn frame_mark_used(address: usize) {
+    if address < FRAME_START || address >= MAX_PHYSICAL || (address & (PAGE_SIZE - 1)) != 0 {
+        return
+    }
+    let index: usize = address / PAGE_SIZE
+    let byte_address: usize = FRAME_BITMAP + index / 8
+    let bit: u8 = 1 << (index & 7)
+    let current: u8 = memory.read<u8>(byte_address)
+    if (current & bit) == 0 {
+        memory.write<u8>(byte_address, current | bit)
+        if FREE_FRAMES > 0 {
+            FREE_FRAMES -= 1
+        }
+    }
+}
+
+unsafe fn release_usable_range(base: usize, length: usize) {
+    let start: usize = align_up(base, PAGE_SIZE)
+    let end: usize = align_down(base + length, PAGE_SIZE)
+    if start < FRAME_START {
+        start = FRAME_START
+    }
+    if end > MAX_PHYSICAL {
+        end = MAX_PHYSICAL
+    }
+    if end > HIGHEST_PHYSICAL {
+        HIGHEST_PHYSICAL = end
+    }
+    let frame: usize = start
+    while frame < end {
+        frame_mark_free(frame)
+        TOTAL_USABLE_BYTES += PAGE_SIZE
+        frame += PAGE_SIZE
+    }
+}
+
+unsafe fn reserve_range(base: usize, length: usize) {
+    let frame: usize = align_down(base, PAGE_SIZE)
+    let end: usize = align_up(base + length, PAGE_SIZE)
+    if frame < FRAME_START {
+        frame = FRAME_START
+    }
+    if end > MAX_PHYSICAL {
+        end = MAX_PHYSICAL
+    }
+    while frame < end {
+        frame_mark_used(frame)
+        frame += PAGE_SIZE
+    }
+}
+
+unsafe fn parse_memory_map_tag(tag: usize) {
+    let size: usize = memory.read<u32>(tag + 4)
+    let entry_size: usize = memory.read<u32>(tag + 8)
+    if entry_size < 24 || size < 16 {
+        return
+    }
+    let entry: usize = tag + 16
+    let end: usize = tag + size
+    while entry + entry_size <= end {
+        let base: usize = memory.read<u64>(entry)
+        let length: usize = memory.read<u64>(entry + 8)
+        let kind: u32 = memory.read<u32>(entry + 16)
+        if kind == 1 && length >= PAGE_SIZE {
+            release_usable_range(base, length)
+        }
+        entry += entry_size
+    }
+}
+
+unsafe fn memory_init_from_multiboot(boot_info: usize) -> bool {
+    bitmap_fill_used()
+    if boot_info == 0 {
+        release_usable_range(FRAME_START, FALLBACK_FRAME_END - FRAME_START)
+        return false
+    }
+    let total_size: usize = memory.read<u32>(boot_info)
+    if total_size < 16 || total_size > 0x1000000 {
+        release_usable_range(FRAME_START, FALLBACK_FRAME_END - FRAME_START)
+        return false
+    }
+    let found_map: bool = false
+    let tag: usize = boot_info + 8
+    let end: usize = boot_info + total_size
+    while tag + 8 <= end {
+        let kind: u32 = memory.read<u32>(tag)
+        let size: usize = memory.read<u32>(tag + 4)
+        if size < 8 {
+            tag = end
+        } else {
+            if kind == 6 {
+                parse_memory_map_tag(tag)
+                found_map = true
+            }
+            if kind == 14 || kind == 15 {
+                RSDP_ADDRESS = tag + 8
+            }
+            if kind == 0 {
+                tag = end
+            } else {
+                tag += align_up(size, 8)
+            }
+        }
+    }
+    if !found_map {
+        release_usable_range(FRAME_START, FALLBACK_FRAME_END - FRAME_START)
+    }
+    reserve_range(boot_info, total_size)
+    tag = boot_info + 8
+    while tag + 16 <= end {
+        let kind: u32 = memory.read<u32>(tag)
+        let size: usize = memory.read<u32>(tag + 4)
+        if size < 8 {
+            tag = end
+        } else {
+            if kind == 3 {
+                let module_start: usize = memory.read<u32>(tag + 8)
+                let module_end: usize = memory.read<u32>(tag + 12)
+                if module_end > module_start {
+                    reserve_range(module_start, module_end - module_start)
+                }
+            }
+            if kind == 0 {
+                tag = end
+            } else {
+                tag += align_up(size, 8)
+            }
+        }
+    }
+    FRAME_SCAN_INDEX = FRAME_START / PAGE_SIZE
+    return found_map
+}
+
+pub unsafe fn frame_is_used(address: usize) -> bool {
+    if address >= MAX_PHYSICAL {
+        return true
+    }
+    let index: usize = address / PAGE_SIZE
+    let byte: u8 = memory.read<u8>(FRAME_BITMAP + index / 8)
+    let bit: u8 = 1 << (index & 7)
+    return (byte & bit) != 0
+}
+
+pub unsafe fn alloc_frame() -> usize {
+    let start_index: usize = FRAME_START / PAGE_SIZE
+    let index: usize = FRAME_SCAN_INDEX
+    let scanned: usize = 0
+    let result: usize = 0
+    while scanned < (MAX_FRAMES - start_index) && result == 0 {
+        if index >= MAX_FRAMES {
+            index = start_index
+        }
+        let address: usize = index * PAGE_SIZE
+        if !frame_is_used(address) {
+            frame_mark_used(address)
+            result = address
+            ALLOCATED_FRAMES += 1
+        }
+        index += 1
+        scanned += 1
+    }
+    FRAME_SCAN_INDEX = index
+    return result
+}
+
+pub unsafe fn free_frame(address: usize) -> bool {
+    if address < FRAME_START || address >= MAX_PHYSICAL || (address & (PAGE_SIZE - 1)) != 0 {
+        return false
+    }
+    if !frame_is_used(address) {
+        return false
+    }
+    frame_mark_free(address)
+    if ALLOCATED_FRAMES > 0 {
+        ALLOCATED_FRAMES -= 1
+    }
+    if address / PAGE_SIZE < FRAME_SCAN_INDEX {
+        FRAME_SCAN_INDEX = address / PAGE_SIZE
+    }
+    return true
+}
+
+pub fn free_frame_count() -> usize {
+    return FREE_FRAMES
+}
+
+pub fn detected_memory_bytes() -> u64 {
+    return TOTAL_USABLE_BYTES
+}
+
+unsafe fn block_size(block: usize) -> usize {
+    let result: usize = memory.read<u64>(block)
+    return result
+}
+
+unsafe fn block_next(block: usize) -> usize {
+    let result: usize = memory.read<u64>(block + 8)
+    return result
+}
+
+unsafe fn set_block(block: usize, size: usize, next: usize, magic: u64, requested: usize) {
+    memory.write<u64>(block, size)
+    memory.write<u64>(block + 8, next)
+    memory.write<u64>(block + 16, magic)
+    memory.write<u64>(block + 24, requested)
+}
+
+unsafe fn heap_init() {
+    HEAP_FREE_HEAD = HEAP_BASE
+    HEAP_USED_BYTES = 0
+    HEAP_ALLOCATIONS = 0
+    zero_region(HEAP_BASE, HEAP_SIZE)
+    set_block(HEAP_BASE, HEAP_SIZE, 0, HEAP_MAGIC_FREE, 0)
+}
+
+pub unsafe fn heap_alloc(bytes: usize, alignment: usize) -> usize {
+    if bytes == 0 {
+        return 0
+    }
+    let align: usize = alignment
+    if align < 16 {
+        align = 16
+    }
+    if (align & (align - 1)) != 0 || align > PAGE_SIZE {
+        return 0
+    }
+    let previous: usize = 0
+    let current: usize = HEAP_FREE_HEAD
+    let result: usize = 0
+    while current != 0 && result == 0 {
+        let size: usize = block_size(current)
+        let next: usize = block_next(current)
+        let payload: usize = align_up(current + HEAP_HEADER_SIZE + 8, align)
+        let required: usize = align_up(payload + bytes - current, 16)
+        if size >= required {
+            let remainder: usize = size - required
+            let replacement: usize = next
+            if remainder >= HEAP_MIN_SPLIT {
+                let split: usize = current + required
+                set_block(split, remainder, next, HEAP_MAGIC_FREE, 0)
+                replacement = split
+            }
+            if previous == 0 {
+                HEAP_FREE_HEAD = replacement
+            } else {
+                memory.write<u64>(previous + 8, replacement)
+            }
+            set_block(current, required, 0, HEAP_MAGIC_USED, bytes)
+            memory.write<u64>(payload - 8, current)
+            HEAP_USED_BYTES += required
+            HEAP_ALLOCATIONS += 1
+            result = payload
+            current = 0
+        } else {
+            previous = current
+            current = next
+        }
+    }
+    return result
+}
+
+pub unsafe fn heap_free(address: usize) -> bool {
+    if address < HEAP_BASE + HEAP_HEADER_SIZE || address >= HEAP_BASE + HEAP_SIZE {
+        return false
+    }
+    let block: usize = memory.read<u64>(address - 8)
+    if block < HEAP_BASE || block >= HEAP_BASE + HEAP_SIZE {
+        return false
+    }
+    if memory.read<u64>(block + 16) != HEAP_MAGIC_USED {
+        return false
+    }
+    let size: usize = block_size(block)
+    let previous: usize = 0
+    let current: usize = HEAP_FREE_HEAD
+    while current != 0 && current < block {
+        previous = current
+        current = block_next(current)
+    }
+    set_block(block, size, current, HEAP_MAGIC_FREE, 0)
+    if previous == 0 {
+        HEAP_FREE_HEAD = block
+    } else {
+        memory.write<u64>(previous + 8, block)
+    }
+    if current != 0 && block + block_size(block) == current {
+        let combined: usize = block_size(block) + block_size(current)
+        set_block(block, combined, block_next(current), HEAP_MAGIC_FREE, 0)
+    }
+    if previous != 0 && previous + block_size(previous) == block {
+        let combined: usize = block_size(previous) + block_size(block)
+        set_block(previous, combined, block_next(block), HEAP_MAGIC_FREE, 0)
+    }
+    if HEAP_USED_BYTES >= size {
+        HEAP_USED_BYTES -= size
+    }
+    if HEAP_ALLOCATIONS > 0 {
+        HEAP_ALLOCATIONS -= 1
+    }
+    return true
+}
+
+pub unsafe fn heap_calloc(count: usize, bytes: usize, alignment: usize) -> usize {
+    let total: usize = count * bytes
+    if count != 0 && total / count != bytes {
+        return 0
+    }
+    let result: usize = heap_alloc(total, alignment)
+    if result != 0 {
+        zero_region(result, total)
+    }
+    return result
+}
+
+pub unsafe fn heap_realloc(address: usize, bytes: usize, alignment: usize) -> usize {
+    if address == 0 {
+        return heap_alloc(bytes, alignment)
+    }
+    if bytes == 0 {
+        heap_free(address)
+        return 0
+    }
+    let block: usize = memory.read<u64>(address - 8)
+    if block < HEAP_BASE || block >= HEAP_BASE + HEAP_SIZE || memory.read<u64>(block + 16) != HEAP_MAGIC_USED {
+        return 0
+    }
+    let old_bytes: usize = memory.read<u64>(block + 24)
+    if bytes <= old_bytes {
+        memory.write<u64>(block + 24, bytes)
+        return address
+    }
+    let replacement: usize = heap_alloc(bytes, alignment)
+    if replacement == 0 {
+        return 0
+    }
+    copy_region(replacement, address, old_bytes)
+    heap_free(address)
+    return replacement
+}
+
+pub fn heap_used_bytes() -> usize {
+    return HEAP_USED_BYTES
+}
+
+unsafe fn acpi_checksum(address: usize, bytes: usize) -> bool {
+    let index: usize = 0
+    let sum: u8 = 0
+    while index < bytes {
+        sum += memory.read<u8>(address + index)
+        index += 1
+    }
+    return sum == 0
+}
+
+unsafe fn acpi_root_table() -> usize {
+    if RSDP_ADDRESS == 0 || memory.read<u64>(RSDP_ADDRESS) != ACPI_RSDP_SIGNATURE {
+        return 0
+    }
+    if !acpi_checksum(RSDP_ADDRESS, 20) {
+        return 0
+    }
+    let revision: u8 = memory.read<u8>(RSDP_ADDRESS + 15)
+    if revision >= 2 {
+        let length: usize = memory.read<u32>(RSDP_ADDRESS + 20)
+        if length >= 36 && acpi_checksum(RSDP_ADDRESS, length) {
+            let xsdt: usize = memory.read<u64>(RSDP_ADDRESS + 24)
+            if xsdt != 0 {
+                return xsdt
+            }
+        }
+    }
+    let rsdt: usize = memory.read<u32>(RSDP_ADDRESS + 16)
+    return rsdt
+}
+
+unsafe fn acpi_find_table(signature: u32) -> usize {
+    let root: usize = acpi_root_table()
+    if root == 0 {
+        return 0
+    }
+    let root_signature: u32 = memory.read<u32>(root)
+    let length: usize = memory.read<u32>(root + 4)
+    if length < 36 || !acpi_checksum(root, length) {
+        return 0
+    }
+    let entry_size: usize = 4
+    if root_signature == 0x54445358 {
+        entry_size = 8
+    }
+    let cursor: usize = root + 36
+    let end: usize = root + length
+    let result: usize = 0
+    while cursor + entry_size <= end && result == 0 {
+        let table: usize = memory.read<u32>(cursor)
+        if entry_size == 8 {
+            table = memory.read<u64>(cursor)
+        }
+        if table != 0 {
+            let table_length: usize = memory.read<u32>(table + 4)
+            if memory.read<u32>(table) == signature && table_length >= 36 && acpi_checksum(table, table_length) {
+                result = table
+            }
+        }
+        cursor += entry_size
+    }
+    return result
+}
+
+unsafe fn cpu_table_contains(apic_id: u32) -> bool {
+    let index: u32 = 0
+    let found: bool = false
+    while index < CPU_COUNT && !found {
+        if memory.read<u32>(CPU_TABLE + index * 4) == apic_id {
+            found = true
+        }
+        index += 1
+    }
+    return found
+}
+
+unsafe fn cpu_table_add(apic_id: u32) {
+    if CPU_COUNT * 4 >= CPU_TABLE_BYTES || cpu_table_contains(apic_id) {
+        return
+    }
+    memory.write<u32>(CPU_TABLE + CPU_COUNT * 4, apic_id)
+    CPU_COUNT += 1
+}
+
+unsafe fn irq_overrides_init() {
+    let irq: usize = 0
+    while irq < 16 {
+        let entry: usize = IRQ_OVERRIDES + irq * 8
+        memory.write<u32>(entry, irq)
+        memory.write<u16>(entry + 4, 0)
+        irq += 1
+    }
+}
+
+unsafe fn parse_madt() -> bool {
+    MADT_ADDRESS = acpi_find_table(ACPI_MADT_SIGNATURE)
+    if MADT_ADDRESS == 0 {
+        return false
+    }
+    CPU_COUNT = 0
+    IOAPIC_BASE = 0
+    IOAPIC_GSI_BASE = 0
+    zero_region(CPU_TABLE, CPU_TABLE_BYTES)
+    irq_overrides_init()
+    LOCAL_APIC_BASE = memory.read<u32>(MADT_ADDRESS + 36)
+    let length: usize = memory.read<u32>(MADT_ADDRESS + 4)
+    let entry: usize = MADT_ADDRESS + 44
+    let end: usize = MADT_ADDRESS + length
+    while entry + 2 <= end {
+        let kind: u8 = memory.read<u8>(entry)
+        let size: usize = memory.read<u8>(entry + 1)
+        if size < 2 || entry + size > end {
+            entry = end
+        } else {
+            if kind == 0 && size >= 8 {
+                let flags: u32 = memory.read<u32>(entry + 4)
+                if (flags & 3) != 0 {
+                    cpu_table_add(memory.read<u8>(entry + 3))
+                }
+            }
+            if kind == 1 && size >= 12 && IOAPIC_BASE == 0 {
+                IOAPIC_BASE = memory.read<u32>(entry + 4)
+                IOAPIC_GSI_BASE = memory.read<u32>(entry + 8)
+            }
+            if kind == 2 && size >= 10 {
+                let source: usize = memory.read<u8>(entry + 3)
+                if source < 16 {
+                    let override: usize = IRQ_OVERRIDES + source * 8
+                    memory.write<u32>(override, memory.read<u32>(entry + 4))
+                    memory.write<u16>(override + 4, memory.read<u16>(entry + 8))
+                }
+            }
+            if kind == 5 && size >= 12 {
+                LOCAL_APIC_BASE = memory.read<u64>(entry + 4)
+            }
+            if kind == 9 && size >= 16 {
+                let flags: u32 = memory.read<u32>(entry + 8)
+                let apic_id: u32 = memory.read<u32>(entry + 4)
+                if (flags & 3) != 0 && apic_id <= 255 {
+                    cpu_table_add(apic_id)
+                }
+            }
+            entry += size
+        }
+    }
+    return CPU_COUNT > 0
+}
+
+unsafe fn local_apic_read(register: usize) -> u32 {
+    return memory.volatile_read<u32>(LOCAL_APIC_BASE + register)
+}
+
+unsafe fn local_apic_write(register: usize, value: u32) {
+    memory.volatile_write<u32>(LOCAL_APIC_BASE + register, value)
+    let barrier: u32 = memory.volatile_read<u32>(LOCAL_APIC_BASE + APIC_ID)
+    if barrier == 0xFFFFFFFF {
+        serial_write_byte(0)
+    }
+}
+
+unsafe fn init_local_apic() -> bool {
+    let msr: u64 = cpu.read_msr(APIC_BASE_MSR)
+    cpu.write_msr(APIC_BASE_MSR, msr | APIC_ENABLE)
+    if LOCAL_APIC_BASE == 0 {
+        LOCAL_APIC_BASE = msr & 0xFFFFF000
+    }
+    if LOCAL_APIC_BASE == 0 || LOCAL_APIC_BASE >= MAX_PHYSICAL {
+        return false
+    }
+    local_apic_write(APIC_SPURIOUS, 0x1FF)
+    local_apic_write(APIC_EOI, 0)
+    BSP_APIC_ID = local_apic_read(APIC_ID) >> 24
+    return true
+}
+
+unsafe fn ioapic_read(register: u32) -> u32 {
+    memory.volatile_write<u32>(IOAPIC_BASE, register)
+    return memory.volatile_read<u32>(IOAPIC_BASE + 0x10)
+}
+
+unsafe fn ioapic_write(register: u32, value: u32) {
+    memory.volatile_write<u32>(IOAPIC_BASE, register)
+    memory.volatile_write<u32>(IOAPIC_BASE + 0x10, value)
+}
+
+unsafe fn ioapic_mask_all() {
+    let maximum: u32 = (ioapic_read(1) >> 16) & 0xFF
+    let index: u32 = 0
+    while index <= maximum {
+        ioapic_write(0x10 + index * 2, 0x10000)
+        ioapic_write(0x11 + index * 2, 0)
+        index += 1
+    }
+}
+
+unsafe fn ioapic_route_isa_irq(irq: usize, vector: u8) -> bool {
+    if irq >= 16 || IOAPIC_BASE == 0 {
+        return false
+    }
+    let override: usize = IRQ_OVERRIDES + irq * 8
+    let gsi: u32 = memory.read<u32>(override)
+    let flags: u16 = memory.read<u16>(override + 4)
+    if gsi < IOAPIC_GSI_BASE {
+        return false
+    }
+    let pin: u32 = gsi - IOAPIC_GSI_BASE
+    let maximum: u32 = (ioapic_read(1) >> 16) & 0xFF
+    if pin > maximum {
+        return false
+    }
+    let low: u32 = vector
+    let polarity: u16 = flags & 3
+    let trigger: u16 = (flags >> 2) & 3
+    if polarity == 3 {
+        low = low | 0x2000
+    }
+    if trigger == 3 {
+        low = low | 0x8000
+    }
+    ioapic_write(0x11 + pin * 2, BSP_APIC_ID << 24)
+    ioapic_write(0x10 + pin * 2, low)
+    return true
+}
+
+unsafe fn pic_disable() {
+    io.out8(PIC1_DATA, 0xFF)
+    io.out8(PIC2_DATA, 0xFF)
+}
+
+unsafe fn init_pic() {
+    io.out8(PIC1_COMMAND, 0x11)
+    io.wait()
+    io.out8(PIC2_COMMAND, 0x11)
+    io.wait()
+    io.out8(PIC1_DATA, 0x20)
+    io.wait()
+    io.out8(PIC2_DATA, 0x28)
+    io.wait()
+    io.out8(PIC1_DATA, 4)
+    io.wait()
+    io.out8(PIC2_DATA, 2)
+    io.wait()
+    io.out8(PIC1_DATA, 1)
+    io.wait()
+    io.out8(PIC2_DATA, 1)
+    io.wait()
+    io.out8(PIC1_DATA, 0xFC)
+    io.out8(PIC2_DATA, 0xFF)
+    INTERRUPT_MODE = 1
+}
+
+unsafe fn pic_eoi(irq: u8) {
+    if irq >= 8 {
+        io.out8(PIC2_COMMAND, 0x20)
+    }
+    io.out8(PIC1_COMMAND, 0x20)
+}
+
+unsafe fn interrupt_eoi(irq: u8) {
+    if INTERRUPT_MODE == 2 {
+        local_apic_write(APIC_EOI, 0)
+    } else {
+        pic_eoi(irq)
+    }
+}
+
+unsafe fn platform_interrupts_init() {
+    let acpi: bool = parse_madt()
+    if PREFER_IOAPIC != 0 && acpi && IOAPIC_BASE != 0 && init_local_apic() {
+        pic_disable()
+        ioapic_mask_all()
+        ioapic_route_isa_irq(0, 32)
+        ioapic_route_isa_irq(1, 33)
+        INTERRUPT_MODE = 2
+    } else {
+        init_pic()
+        if acpi {
+            init_local_apic()
+        }
+    }
+}
+
+unsafe fn smp_prepare_trampoline() {
+    zero_region(AP_TRAMPOLINE_BASE, PAGE_SIZE)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 0, 250)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 1, 252)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 2, 49)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 3, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 4, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 5, 208)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 6, 188)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 7, 240)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 8, 191)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 9, 184)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 10, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 11, 10)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 12, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 13, 216)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 14, 102)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 15, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 16, 1)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 17, 22)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 18, 176)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 19, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 20, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 21, 32)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 22, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 23, 102)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 24, 131)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 25, 200)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 26, 1)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 27, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 28, 34)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 29, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 30, 102)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 31, 234)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 32, 38)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 33, 160)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 34, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 35, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 36, 8)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 37, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 38, 102)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 39, 184)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 40, 16)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 41, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 42, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 43, 216)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 44, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 45, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 46, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 47, 208)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 48, 161)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 49, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 50, 176)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 51, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 52, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 53, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 54, 34)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 55, 216)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 56, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 57, 32)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 58, 224)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 59, 131)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 60, 200)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 61, 32)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 62, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 63, 34)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 64, 224)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 65, 185)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 66, 128)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 67, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 68, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 69, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 70, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 71, 50)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 72, 13)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 73, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 74, 1)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 75, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 76, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 77, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 78, 48)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 79, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 80, 32)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 81, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 82, 13)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 83, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 84, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 85, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 86, 128)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 87, 15)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 88, 34)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 89, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 90, 234)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 91, 97)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 92, 160)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 93, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 94, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 95, 24)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 96, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 97, 102)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 98, 184)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 99, 16)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 100, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 101, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 102, 216)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 103, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 104, 192)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 105, 142)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 106, 208)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 107, 72)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 108, 139)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 109, 36)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 110, 37)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 111, 8)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 112, 176)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 113, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 114, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 115, 72)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 116, 49)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 117, 237)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 118, 139)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 119, 60)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 120, 37)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 121, 24)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 122, 176)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 123, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 124, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 125, 72)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 126, 139)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 127, 4)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 128, 37)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 129, 16)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 130, 176)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 131, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 132, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 133, 255)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 134, 208)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 135, 250)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 136, 244)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 137, 235)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 138, 252)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 139, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 140, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 141, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 142, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 143, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 144, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 145, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 146, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 147, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 148, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 149, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 150, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 151, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 152, 255)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 153, 255)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 154, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 155, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 156, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 157, 154)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 158, 207)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 159, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 160, 255)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 161, 255)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 162, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 163, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 164, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 165, 146)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 166, 207)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 167, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 168, 255)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 169, 255)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 170, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 171, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 172, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 173, 154)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 174, 175)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 175, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 176, 31)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 177, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 178, 144)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 179, 160)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 180, 0)
+    memory.write<u8>(AP_TRAMPOLINE_BASE + 181, 0)
+    zero_region(SMP_MAILBOX, PAGE_SIZE)
+}
+
+unsafe fn local_apic_wait_delivery() {
+    let spins: usize = 0
+    while spins < 1000000 && (local_apic_read(APIC_ICR_LOW) & 0x1000) != 0 {
+        cpu.pause()
+        spins += 1
+    }
+}
+
+unsafe fn local_apic_send(apic_id: u32, command: u32) {
+    local_apic_wait_delivery()
+    local_apic_write(APIC_ICR_HIGH, apic_id << 24)
+    local_apic_write(APIC_ICR_LOW, command)
+    local_apic_wait_delivery()
+}
+
+unsafe fn short_delay(iterations: usize) {
+    let index: usize = 0
+    while index < iterations {
+        cpu.pause()
+        index += 1
+    }
+}
+
+@link_name("kura_ap_main")
+pub unsafe extern "C" fn application_processor_main(apic_id: u32) -> never {
+    cpu.disable_interrupts()
+    cpu.load_gdt(GDT_DESCRIPTOR)
+    cpu.reload_kernel_segments()
+    cpu.load_idt(IDT_DESCRIPTOR)
+    init_local_apic()
+    SMP_ONLINE_CPUS += 1
+    memory.volatile_write<u32>(SMP_MAILBOX + 28, 1)
+    serial_write_byte(0x41)
+    cpu.enable_interrupts()
+    while true {
+        cpu.wait_for_interrupt()
+    }
+}
+
+unsafe fn smp_start_processor(apic_id: u32) -> bool {
+    if apic_id == BSP_APIC_ID || apic_id > 255 || LOCAL_APIC_BASE == 0 {
+        return false
+    }
+    let stack: usize = heap_alloc(65536, 16)
+    if stack == 0 {
+        return false
+    }
+    memory.write<u64>(SMP_MAILBOX, cpu.read_cr3())
+    memory.write<u64>(SMP_MAILBOX + 8, stack + 65536)
+    memory.write<u64>(SMP_MAILBOX + 16, function.address(application_processor_main))
+    memory.write<u32>(SMP_MAILBOX + 24, apic_id)
+    memory.volatile_write<u32>(SMP_MAILBOX + 28, 0)
+    local_apic_send(apic_id, 0x00004500)
+    short_delay(100000)
+    local_apic_send(apic_id, 0x00000500)
+    short_delay(100000)
+    local_apic_send(apic_id, 0x00000600 | AP_TRAMPOLINE_VECTOR)
+    short_delay(200000)
+    local_apic_send(apic_id, 0x00000600 | AP_TRAMPOLINE_VECTOR)
+    let spins: usize = 0
+    while spins < 5000000 && memory.volatile_read<u32>(SMP_MAILBOX + 28) == 0 {
+        cpu.pause()
+        spins += 1
+    }
+    return memory.volatile_read<u32>(SMP_MAILBOX + 28) != 0
+}
+
+unsafe fn smp_start_all() -> u32 {
+    if ENABLE_SMP == 0 || INTERRUPT_MODE != 2 || CPU_COUNT <= 1 {
+        return 0
+    }
+    smp_prepare_trampoline()
+    let index: u32 = 0
+    let started: u32 = 0
+    while index < CPU_COUNT {
+        let apic_id: u32 = memory.read<u32>(CPU_TABLE + index * 4)
+        if smp_start_processor(apic_id) {
+            started += 1
+        }
+        index += 1
+    }
+    return started
+}
+
+unsafe fn exception_stop(code: u8) -> never {
+    serial_write_byte(0x45)
+    serial_write_byte(code)
+    cpu.disable_interrupts()
+    cpu.halt()
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn divide_by_zero(frame: *mut InterruptFrame) {
+    exception_stop(0)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn breakpoint_handler(frame: *mut InterruptFrame) {
+    serial_write_byte(3)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn invalid_opcode(frame: *mut InterruptFrame) {
+    exception_stop(6)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn double_fault(frame: *mut InterruptFrame, error: u64) {
+    exception_stop(8)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn general_protection(frame: *mut InterruptFrame, error: u64) {
+    exception_stop(13)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn page_fault(frame: *mut InterruptFrame, error: u64) {
+    let fault_address: u64 = cpu.read_cr2()
+    serial_write_byte(14)
+    if fault_address == 0 {
+        serial_write_byte(0)
+    }
+    exception_stop(14)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn timer_interrupt(frame: *mut InterruptFrame) {
+    TIMER_TICKS += 1
+    interrupt_eoi(0)
+}
+
+@interrupt
+pub unsafe extern "x86-interrupt" fn keyboard_interrupt(frame: *mut InterruptFrame) {
+    let scan_code: u8 = io.in8(0x60)
+    if scan_code == 0 {
+        serial_write_byte(0)
+    }
+    interrupt_eoi(1)
+}
+
+@entry
+pub unsafe extern "C" fn kernel_main() -> never {
+    cpu.disable_interrupts()
+    serial_init()
+    serial_write_byte(0x42)
+    init_gdt()
+    init_idt()
+    init_identity_paging()
+    page_table_pool_init()
+    let boot_info: usize = kura_boot_info()
+    memory_init_from_multiboot(boot_info)
+    heap_init()
+    platform_interrupts_init()
+    smp_start_all()
+    serial_write_byte(0x4B)
+    cpu.enable_interrupts()
+    while true {
+        cpu.wait_for_interrupt()
+    }
+}
