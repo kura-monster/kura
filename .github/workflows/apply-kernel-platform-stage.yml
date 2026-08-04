@@ -66,14 +66,14 @@ jobs:
           node bin/kr-kernel.mjs emit --smoke --cpus 2 -o /tmp/kura-platform-smoke.kr
           node bin/kr-system.mjs check /tmp/kura-platform-smoke.kr
           node bin/kr-kernel.mjs build-generated --smoke --cpus 2 --out-dir /tmp/kura-platform-build
-          test -s /tmp/kura-platform-build/generated-kernel.ll
-          test -s /tmp/kura-platform-build/generated-kernel.o
+          test -s /tmp/kura-platform-build/kernel.ll
+          test -s /tmp/kura-platform-build/kernel.o
           test -s /tmp/kura-platform-build/kura-bootstrap.o
-          test -s /tmp/kura-platform-build/generated-kernel.elf
-          readelf -h /tmp/kura-platform-build/generated-kernel.elf
-          readelf -s /tmp/kura-platform-build/generated-kernel.elf | grep -q kernel_main
-          readelf -s /tmp/kura-platform-build/generated-kernel.elf | grep -q kura_boot_entry
-          readelf -s /tmp/kura-platform-build/generated-kernel.elf | grep -q kura_ap_main
+          test -s /tmp/kura-platform-build/kernel.elf
+          readelf -h /tmp/kura-platform-build/kernel.elf
+          readelf -s /tmp/kura-platform-build/kernel.elf | grep -q kernel_main
+          readelf -s /tmp/kura-platform-build/kernel.elf | grep -q kura_boot_entry
+          readelf -s /tmp/kura-platform-build/kernel.elf | grep -q kura_ap_main
           node bin/kr-kernel.mjs smoke /tmp/kura-platform-smoke.kr --cpus 2 --out-dir /tmp/kura-platform-qemu --dry-run --json > /tmp/kura-platform-qemu.json
           npm pack --dry-run --json --ignore-scripts > /tmp/kura-platform-pack.json
 
