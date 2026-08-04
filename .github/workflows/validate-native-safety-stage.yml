@@ -29,6 +29,25 @@ jobs:
           echo 'bd652fc4f886d71ced41b7934dafabb375363cd9e6d85a975da691584bc6e7a0  /tmp/kura-safety-stage.tgz' | sha256sum -c -
           tar -xzf /tmp/kura-safety-stage.tgz -C .
           python scripts/apply-native-safety-stage.py
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/system-native-safety.mjs')
+          source = path.read_text(encoding='utf-8')
+          broken = """        let copy = inferred.every(item => item.copy);
+        let send = inferred.every(item => item.send);
+        let sync = inferred.every(item => item.sync);
+        if (hasAttribute(declaration, 'copy')) copy = true;
+"""
+          fixed = """        const fieldsCopy = inferred.every(item => item.copy);
+        let copy = hasAttribute(declaration, 'copy') && fieldsCopy;
+        let send = inferred.every(item => item.send);
+        let sync = inferred.every(item => item.sync);
+"""
+          if source.count(broken) != 1:
+              raise SystemExit('Expected native Copy inference block was not found exactly once.')
+          path.write_text(source.replace(broken, fixed, 1), encoding='utf-8')
+          PY
           chmod +x bin/kr-safety.mjs
 
       - name: Run safety and package validation
