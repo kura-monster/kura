@@ -1,0 +1,41 @@
+name: One-time project mode repair
+
+on:
+  push:
+    branches:
+      - agent/system-foundation-0.1
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+          fetch-depth: 0
+
+      - name: Repair project directory mode
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('bin/kr.mjs')
+          source = path.read_text(encoding='utf-8')
+          broken = "await mkdir(path.join(directory, 'src'), { recursive: true, mode: 0o00 });"
+          fixed = "await mkdir(path.join(directory, 'src'), { recursive: true, mode: 0o700 });"
+          if broken not in source:
+              raise SystemExit('Expected project mode typo was not found; refusing an unrelated edit.')
+          path.write_text(source.replace(broken, fixed, 1), encoding='utf-8')
+          PY
+
+          rm .github/workflows/one-time-project-mode-repair.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bin/kr.mjs .github/workflows/one-time-project-mode-repair.yml
+          git commit -m "Fix new project directory permissions"
+          git push origin HEAD:agent/system-foundation-0.1
