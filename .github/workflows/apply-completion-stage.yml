@@ -21,8 +21,12 @@ jobs:
           set -euo pipefail
           echo 'efbc1763c8f53c7eb2104af696a94024c0cef70e29aee4c99b37e39d0488477c  completion-stage/part-00.b64' | sha256sum -c -
           echo '1b05d99f7f863369d281c75d431c789a690147be2111d95163563389846bdde1  completion-stage/part-01.b64' | sha256sum -c -
-          echo '7204c24ae10182f9d97726fe2ef1ccccb6085a4cf244b58865ed975dbf293a53  completion-stage/part-02.b64' | sha256sum -c -
-          cat completion-stage/part-*.b64 > /tmp/kura-completion.b64
+          echo 'd531d72276761429ab5db4abc1760ba02fb636d1f92b97f3454626a3ceaea26d  completion-stage/part-02-00.b64' | sha256sum -c -
+          echo '0092a03d527894787e6039bfbd0d37fc9949e749ad7b5f2759298bf7133aa38f  completion-stage/part-02-01.b64' | sha256sum -c -
+          echo '03163270ad7d996212b00e267360519980a738ca7e5b5b77bc3eb1a53218bcc9  completion-stage/part-02-02.b64' | sha256sum -c -
+          echo '4682ba9dd5dd55dc980f557c003cb65cabc3d535bed5c7dfe77ea739f617de7a  completion-stage/part-02-03.b64' | sha256sum -c -
+          echo '5948cf1b05a694c672af3bd986177d3a6d0da2308f9ecfbb6715e20d1e8dedce  completion-stage/part-02-04.b64' | sha256sum -c -
+          cat completion-stage/part-00.b64 completion-stage/part-01.b64 completion-stage/part-02-00.b64 completion-stage/part-02-01.b64 completion-stage/part-02-02.b64 completion-stage/part-02-03.b64 completion-stage/part-02-04.b64 > /tmp/kura-completion.b64
           echo '4b2ad23ab262f6d606be24dbcc127ddc8a969ec0da529b0373d8b1fc8b7a438b  /tmp/kura-completion.b64' | sha256sum -c -
           base64 --decode /tmp/kura-completion.b64 > /tmp/kura-completion.tar.xz
           echo '86e9debd1a0b97650669778044a4be6f3663fa5a13aa41047023f31ce855d9a3  /tmp/kura-completion.tar.xz' | sha256sum -c -
