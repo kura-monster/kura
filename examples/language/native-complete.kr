@@ -1,0 +1,34 @@
+trait Display {
+  fn display(self: Number) -> i32;
+}
+
+struct Number {
+  value: i32,
+}
+
+enum Choice {
+  First(i32),
+  Second(i32),
+}
+
+impl Display for Number {
+  fn display(self: Number) -> i32 {
+    return self.value
+  }
+}
+
+fn identity<T>(value: T) -> T where T: Send {
+  return value
+}
+
+fn choose(value: Choice) -> i32 {
+  return match value {
+    Choice::First(number) => number,
+    Choice::Second(number) => number + 1,
+  }
+}
+
+fn main() -> i32 {
+  let number: Number = Number(42)
+  return identity<i32>(number.display())
+}

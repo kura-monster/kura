@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: MIT OR Apache-2.0
+import { writeSelfHostArtifacts, verifySelfHostArtifacts, SELF_HOST_COMPILER_SOURCE } from '../lib/self-host.mjs';
+const args=process.argv.slice(2);const command=args.shift()??'help';
+try{if(command==='help'||command==='--help'){console.log('kr-selfhost source\nkr-selfhost bootstrap [directory]\nkr-selfhost verify [directory]');process.exit(0);}if(command==='source')console.log(SELF_HOST_COMPILER_SOURCE);else if(command==='bootstrap'){const result=await writeSelfHostArtifacts(args[0]??'build/self-host');console.log(JSON.stringify({fixedPoint:result.fixedPoint,hashes:result.hashes,files:result.files,capabilities:result.capabilities},null,2));}else if(command==='verify'){const result=await verifySelfHostArtifacts(args[0]??'build/self-host');console.log(JSON.stringify(result,null,2));if(!result.ok)process.exitCode=1;}else throw new Error(`Unknown command ${command}.`);}catch(error){console.error(error.stack??error.message);process.exitCode=1;}

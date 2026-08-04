@@ -1,0 +1,9 @@
+async fn download(url: String) -> Result<String, String> {
+  let response = await http_get(url)
+  return Result::Ok(response)
+}
+
+async fn main() -> Result<String, String> {
+  let body = download("https://example.com")?
+  return Result::Ok(body)
+}

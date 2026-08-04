@@ -1,0 +1,18 @@
+pub fn compile_program(source: String) -> String {
+  let header_end = source.indexOf("{")
+  let footer = source.lastIndexOf("}")
+  let header = source.slice(0, header_end).trim()
+  let body = source.slice(header_end + 1, footer)
+  let name_start = header.indexOf("fn ") + 3
+  let name_end = header.indexOf("(")
+  let name = header.slice(name_start, name_end).trim()
+  let parameter_start = name_end + 1
+  let parameter_end = header.indexOf(")")
+  let parameter_text = header.slice(parameter_start, parameter_end).trim()
+  let colon = parameter_text.indexOf(":")
+  let parameter = parameter_text.slice(0, colon).trim()
+  let let_keyword = "le" + "t "
+  let const_keyword = "con" + "st "
+  let js_body = body.replaceAll(let_keyword, const_keyword)
+  return "export function " + name + "(" + parameter + ") {" + js_body + "}\n"
+}
