@@ -136,6 +136,10 @@ qemu-smoke.elf
 
 It also inspects the final ELF header, section table, and symbol table, requiring both `kura_boot_entry` and `kernel_main` to be present. The package regression suite is executed on Ubuntu and Windows with Node.js 20, 22, and 24.
 
+## Milestone status
+
+Kura can now generate and link a kernel image with its own Multiboot2 entry bridge, enter x86_64 long mode, construct its initial descriptor and interrupt tables, initialize an interrupt controller, install initial paging, allocate early physical frames and heap memory, and reach Kura-authored kernel code.
+
 ## Current boundary
 
 This stage supplies a real boot bridge and early architecture runtime. It does not yet provide:
