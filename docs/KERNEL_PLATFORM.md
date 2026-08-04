@@ -164,6 +164,20 @@ import {
 
 These helpers are also used by regression tests to validate firmware structures without booting a virtual machine.
 
+## Validation
+
+The platform update is validated as a real native build rather than only as generated text. The verification pipeline runs the complete package regression suite, generates an SMP smoke kernel, checks it with the Kura native frontend, lowers it to LLVM, emits both kernel and bootstrap objects, and links a freestanding ELF64 image.
+
+The final ELF is required to contain all three entry symbols:
+
+```text
+kura_boot_entry
+kernel_main
+kura_ap_main
+```
+
+The QEMU command plan is also generated with two virtual CPUs to verify SMP-related toolchain arguments, while pure JavaScript fixtures validate Multiboot2 tags, the physical-frame bitmap, ACPI MADT records, IOAPIC overrides, and the AP trampoline byte image.
+
 ## Next layer
 
 The platform is now ready for:
