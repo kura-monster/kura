@@ -1,7 +1,7 @@
 {
   "name": "@kura-lang/compiler",
   "version": "1.0.0",
-  "description": "Kura v1 compiler with self-host bootstrap, high-level LLVM, async structured concurrency, native x86_64 userspace, ownership, SMP, and production tooling",
+  "description": "Kura v1 compiler with expanded self-hosting, high-level LLVM, async structured concurrency, x86_64 userspace, NVMe, xHCI/HID, VirtIO-Net, framebuffer, ownership, SMP, and production tooling",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
@@ -15,7 +15,8 @@
     "kr-async": "bin/kr-async.mjs",
     "kr-dev": "bin/kr-dev.mjs",
     "kr-userspace": "bin/kr-userspace.mjs",
-    "kr-selfhost": "bin/kr-selfhost.mjs"
+    "kr-selfhost": "bin/kr-selfhost.mjs",
+    "kr-hardware": "bin/kr-hardware.mjs"
   },
   "exports": {
     ".": "./lib/compiler.mjs",
@@ -43,7 +44,8 @@
     "./async": "./lib/async-runtime.mjs",
     "./developer-toolchain": "./lib/developer-toolchain.mjs",
     "./system/userspace": "./lib/system-userspace.mjs",
-    "./self-host": "./lib/self-host.mjs"
+    "./self-host": "./lib/self-host.mjs",
+    "./system/hardware": "./lib/system-hardware.mjs"
   },
   "files": [
     "bin",
@@ -150,7 +152,15 @@
     "virtio",
     "ipv4",
     "udp",
-    "tcp"
+    "tcp",
+    "nvme",
+    "xhci",
+    "usb-hid",
+    "virtio-net",
+    "framebuffer",
+    "device-drivers",
+    "hardware-kernel",
+    "self-host-module-compiler"
   ],
   "repository": {
     "type": "git",
@@ -161,7 +171,7 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs",
+    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs",
     "test:security": "node test/security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
     "check:package": "npm pack --dry-run --json",
@@ -169,9 +179,9 @@
     "test:features": "node test/formatter.mjs && node test/stdlib.mjs && node test/test-runner.mjs && node test/package-manager.mjs",
     "test:next": "node test/ai.mjs && node test/dev-server.mjs && node test/standalone.mjs",
     "test:lsp": "node test/lsp.mjs",
-    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs",
-    "test:native": "node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs",
-    "test:system-next": "node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs",
+    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs",
+    "test:native": "node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs",
+    "test:system-next": "node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs",
     "test:kernel-runtime": "node test/system-kernel-runtime.mjs",
     "test:cli": "node test/cli-syntax.mjs",
     "test:kernel-platform": "node test/system-kernel-platform.mjs",
@@ -183,6 +193,7 @@
     "test:developer-toolchain": "node test/developer-toolchain.mjs",
     "test:userspace": "node test/system-userspace.mjs",
     "test:self-host": "node test/self-host.mjs",
-    "self-host": "node bin/kr-selfhost.mjs bootstrap build/self-host"
+    "self-host": "node bin/kr-selfhost.mjs bootstrap build/self-host",
+    "test:hardware": "node test/system-hardware.mjs"
   }
 }

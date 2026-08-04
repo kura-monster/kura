@@ -87,6 +87,26 @@ Strict mode is defense in depth rather than a complete operating-system sandbox.
 - [Download Center](https://kr.klyn.site/download)
 - [VS Code experiment archive](https://kr.klyn.site/vscode)
 
+## Native hardware drivers and expanded self-hosting
+
+Kura can generate a bootable scheduler/userspace kernel with NVMe, xHCI/HID, VirtIO-Net, and framebuffer driver foundations:
+
+```bash
+kr-hardware manifest --json
+kr-hardware kernel -o kernel-hardware.kr
+kr-hardware build --out-dir build/hardware
+```
+
+The Kura-written self-host compiler now emits multi-function modules, handles scalar type annotations, async function syntax, and mutable/immutable bindings, and verifies a Stage 2/Stage 3 fixed point:
+
+```bash
+kr-selfhost manifest
+kr-selfhost compile app.kr -o app.mjs
+kr-selfhost bootstrap build/self-host
+```
+
+See `docs/HARDWARE_DRIVERS.md` and `docs/SELF_HOSTING.md` for the exact supported scope.
+
 ## License
 
 Kura is dual-licensed under **MIT OR Apache-2.0**. See `LICENSE`, `LICENSE-MIT`, `LICENSE-APACHE`, and `NOTICE`.

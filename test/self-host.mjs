@@ -1,15 +1,24 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 import assert from 'node:assert/strict';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { bootstrapSelfHostedCompiler, writeSelfHostArtifacts, verifySelfHostArtifacts } from '../lib/self-host.mjs';
+import { bootstrapSelfHostedCompiler, compileWithSelfHostedCompiler, createSelfHostMigrationManifest, writeSelfHostArtifacts, verifySelfHostArtifacts } from '../lib/self-host.mjs';
 const result = await bootstrapSelfHostedCompiler();
 assert.equal(result.fixedPoint, true);
 assert.equal(result.hashes.stage2, result.hashes.stage3);
 assert.equal(result.probeResult, 'Kura');
+assert.equal(result.stage1Version, '1.1-stage1');
 assert.equal(result.capabilities.compilerWrittenInKura, true);
+assert.equal(result.capabilities.moduleCompilerMigrated, true);
+assert.equal(createSelfHostMigrationManifest().stage, 'module-compiler');
+const compiled = await compileWithSelfHostedCompiler('pub fn trim(value: String) -> String { return value.trim() }\npub fn answer(value: String) -> String { return trim(value) }');
+assert.match(compiled.code, /export function answer\(value\)/);
+const module = await import(`data:text/javascript;base64,${Buffer.from(compiled.code).toString('base64')}`);
+assert.equal(module.answer(' Kura '), 'Kura');
 const directory = await mkdtemp(join(tmpdir(), 'kura-selfhost-'));
 await writeSelfHostArtifacts(directory);
 assert.equal((await verifySelfHostArtifacts(directory)).ok, true);
+const report = JSON.parse(await readFile(join(directory, 'self-host-report.json'), 'utf8'));
+assert.equal(report.migration.stage, 'module-compiler');
 console.log('self-host bootstrap tests passed');

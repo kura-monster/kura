@@ -1,0 +1,120 @@
+#![system]
+#![no_std]
+#![no_main]
+
+const PCI_CONFIG_ADDRESS_PORT: u16 = 0xCF8
+const PCI_CONFIG_DATA_PORT: u16 = 0xCFC
+const DMA_POOL_BASE: usize = 14680064
+const DMA_POOL_SIZE: usize = 4194304
+const NVME_ADMIN_SQ: usize = 18874368
+const NVME_ADMIN_CQ: usize = 18878464
+const NVME_IO_SQ: usize = 18882560
+const NVME_IO_CQ: usize = 18890752
+const XHCI_COMMAND_RING: usize = 18939904
+const XHCI_EVENT_RING: usize = 18956288
+const VIRTIO_NET_RX: usize = 19070976
+const VIRTIO_NET_TX: usize = 19103744
+const VIRTIO_NET_RX_PFN: u32 = 4656
+const VIRTIO_NET_TX_PFN: u32 = 4664
+const FRAMEBUFFER_SHADOW: usize = 19136512
+
+static mut NVME_BASE: usize = 0
+static mut XHCI_BASE: usize = 0
+static mut VIRTIO_NET_IO: u16 = 0
+static mut FRAMEBUFFER_BASE: usize = 0
+static mut FRAMEBUFFER_WIDTH: usize = 0
+static mut FRAMEBUFFER_HEIGHT: usize = 0
+static mut FRAMEBUFFER_PITCH: usize = 0
+static mut HARDWARE_READY: bool = false
+
+unsafe fn pci_config_address(bus: u8, device: u8, function: u8, offset: u8) -> u32 {
+    return 0x80000000 | (bus << 16) | (device << 11) | (function << 8) | (offset & 0xFC)
+}
+
+unsafe fn pci_read32(bus: u8, device: u8, function: u8, offset: u8) -> u32 {
+    io.out32(PCI_CONFIG_ADDRESS_PORT, pci_config_address(bus, device, function, offset))
+    return io.in32(PCI_CONFIG_DATA_PORT)
+}
+
+unsafe fn pci_write32(bus: u8, device: u8, function: u8, offset: u8, value: u32) {
+    io.out32(PCI_CONFIG_ADDRESS_PORT, pci_config_address(bus, device, function, offset))
+    io.out32(PCI_CONFIG_DATA_PORT, value)
+}
+
+unsafe fn nvme_wait_ready(base: usize, ready: bool) -> bool {
+    let spins: usize = 0
+    while spins < 10000000 {
+        let status: u32 = memory.volatile_read<u32>(base + 0x1C)
+        if ready {
+            if (status & 1) != 0 { return true }
+        } else {
+            if (status & 1) == 0 { return true }
+        }
+        spins += 1
+    }
+    return false
+}
+
+unsafe fn nvme_init(base: usize) -> bool {
+    NVME_BASE = base
+    let capabilities: u64 = memory.volatile_read<u64>(base)
+    let timeout: u64 = (capabilities >> 24) & 0xFF
+    let configuration: u32 = memory.volatile_read<u32>(base + 0x14)
+    memory.volatile_write<u32>(base + 0x14, configuration & 0xFFFFFFFE)
+    if !nvme_wait_ready(base, false) { return false }
+    memory.volatile_write<u32>(base + 0x24, ((64 - 1) << 16) | (64 - 1))
+    memory.volatile_write<u64>(base + 0x28, NVME_ADMIN_SQ)
+    memory.volatile_write<u64>(base + 0x30, NVME_ADMIN_CQ)
+    memory.volatile_write<u32>(base + 0x14, (6 << 16) | (4 << 20) | 1)
+    if timeout == 0 { return nvme_wait_ready(base, true) }
+    return nvme_wait_ready(base, true)
+}
+
+unsafe fn xhci_init(base: usize) -> bool {
+    XHCI_BASE = base
+    let capability_length: usize = memory.volatile_read<u8>(base)
+    let operational: usize = base + capability_length
+    let command: u32 = memory.volatile_read<u32>(operational)
+    memory.volatile_write<u32>(operational, command & 0xFFFFFFFE)
+    let spins: usize = 0
+    while spins < 10000000 && (memory.volatile_read<u32>(operational + 4) & 1) == 0 { spins += 1 }
+    memory.volatile_write<u32>(operational, memory.volatile_read<u32>(operational) | 2)
+    let reset_spins: usize = 0
+    while reset_spins < 10000000 && (memory.volatile_read<u32>(operational) & 2) != 0 { reset_spins += 1 }
+    memory.volatile_write<u64>(operational + 0x18, XHCI_COMMAND_RING | 1)
+    memory.volatile_write<u32>(operational, memory.volatile_read<u32>(operational) | 1)
+    return (memory.volatile_read<u32>(operational + 4) & 1) == 0
+}
+
+unsafe fn virtio_net_init(io_base: u16) -> bool {
+    VIRTIO_NET_IO = io_base
+    io.out8(io_base + 0x12, 0)
+    io.out8(io_base + 0x12, 1)
+    let features: u32 = io.in32(io_base)
+    io.out32(io_base + 4, features & 0x20)
+    io.out16(io_base + 14, 0)
+    io.out32(io_base + 8, VIRTIO_NET_RX_PFN)
+    io.out16(io_base + 14, 1)
+    io.out32(io_base + 8, VIRTIO_NET_TX_PFN)
+    io.out8(io_base + 0x12, 7)
+    return (io.in8(io_base + 0x12) & 0x80) == 0
+}
+
+pub unsafe fn framebuffer_configure(base: usize, width: usize, height: usize, pitch: usize) {
+    FRAMEBUFFER_BASE = base
+    FRAMEBUFFER_WIDTH = width
+    FRAMEBUFFER_HEIGHT = height
+    FRAMEBUFFER_PITCH = pitch
+}
+
+pub unsafe fn framebuffer_put_pixel(x: usize, y: usize, color: u32) {
+    if FRAMEBUFFER_BASE == 0 || x >= FRAMEBUFFER_WIDTH || y >= FRAMEBUFFER_HEIGHT { return }
+    memory.volatile_write<u32>(FRAMEBUFFER_BASE + y * FRAMEBUFFER_PITCH + x * 4, color)
+}
+
+pub unsafe fn init_hardware_drivers() {
+    NVME_BASE = 0
+    XHCI_BASE = 0
+    VIRTIO_NET_IO = 0
+    HARDWARE_READY = true
+}
