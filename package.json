@@ -10,6 +10,7 @@
   "exports": {
     ".": "./lib/compiler.mjs",
     "./system": "./lib/system.mjs",
+    "./system/source": "./lib/system-source.mjs",
     "./runtime/gpu": "./runtime/gpu.mjs",
     "./package.json": "./package.json",
     "./diagnostics": "./lib/diagnostics.mjs",
@@ -56,10 +57,10 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs",
+    "test": "node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs",
     "test:security": "node test/security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
-    "test:system": "node test/system.mjs",
+    "test:system": "node test/system.mjs && node test/system-source.mjs",
     "check:package": "npm pack --dry-run --json",
     "prepack": "npm test"
   }
