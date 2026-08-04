@@ -1,0 +1,13 @@
+#![target("x86_64-unknown-none")]
+#![no_std]
+#![no_main]
+#![multiboot2]
+
+@entry
+pub extern "C" fn kernel_main() -> never {
+  unsafe {
+    memory.volatile_write<u8>(0xB8000, 75)
+    memory.volatile_write<u8>(0xB8001, 15)
+    cpu.halt()
+  }
+}

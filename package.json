@@ -1,7 +1,7 @@
 {
   "name": "@kura-lang/compiler",
   "version": "1.0.0",
-  "description": "Kura v1 compiler and complete CLI with package manager, standard library, formatter, tests, Security Shield, Kura.ai, hot reload, standalone builds, and a generic language server",
+  "description": "Kura v1 compiler with Kura.ai, LSP, standard library, Security Shield, and a native freestanding x86_64 system-programming toolchain",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
@@ -16,7 +16,15 @@
     "./runtime/gpu": "./runtime/gpu.mjs",
     "./package.json": "./package.json",
     "./diagnostics": "./lib/diagnostics.mjs",
-    "./security": "./lib/security.mjs"
+    "./security": "./lib/security.mjs",
+    "./formatter": "./lib/formatter.mjs",
+    "./package-manager": "./lib/package-manager.mjs",
+    "./test-runner": "./lib/test-runner.mjs",
+    "./std/*": "./std/*.mjs",
+    "./ai": "./lib/ai.mjs",
+    "./dev-server": "./lib/dev-server.mjs",
+    "./standalone": "./lib/standalone.mjs",
+    "./lsp-server": "./lib/lsp-server.mjs"
   },
   "files": [
     "bin",
@@ -32,7 +40,9 @@
     "SECURITY.md",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
-    "docs"
+    "docs",
+    "std",
+    "templates/basic_test.kr"
   ],
   "engines": {
     "node": ">=20"
@@ -42,14 +52,29 @@
     "compiler",
     "programming-language",
     "cli",
+    "security",
+    "diagnostics",
+    "sandbox",
+    "friendly-errors",
     "package-manager",
     "standard-library",
     "formatter",
     "test-runner",
+    "batteries-included",
+    "ai-native",
+    "hot-reload",
+    "dev-server",
+    "single-executable",
+    "standalone",
+    "vscode",
+    "lsp",
     "language-server",
-    "security",
-    "diagnostics",
-    "friendly-errors"
+    "system-programming",
+    "native",
+    "llvm",
+    "kernel",
+    "freestanding",
+    "x86-64"
   ],
   "repository": {
     "type": "git",
@@ -60,13 +85,17 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs",
+    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs",
     "test:security": "node test/security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
-    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs",
-    "test:native": "node test/system-native.mjs",
-    "test:cli": "node test/cli-syntax.mjs",
     "check:package": "npm pack --dry-run --json",
-    "prepack": "npm test"
+    "prepack": "npm test",
+    "test:features": "node test/formatter.mjs && node test/stdlib.mjs && node test/test-runner.mjs && node test/package-manager.mjs",
+    "test:next": "node test/ai.mjs && node test/dev-server.mjs && node test/standalone.mjs",
+    "test:lsp": "node test/lsp.mjs",
+    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs",
+    "test:native": "node test/system-native.mjs && node test/system-next.mjs",
+    "test:system-next": "node test/system-next.mjs",
+    "test:cli": "node test/cli-syntax.mjs"
   }
 }

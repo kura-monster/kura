@@ -1,0 +1,5 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+const DEFAULT_MAX_BYTES = 16 * 1024 * 1024;
+export async function fetchBytes(url, options = {}) { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 30_000); timer.unref?.(); try { const response = await fetch(url, { ...options, signal: controller.signal }); if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`); const maximum = options.maxBytes ?? DEFAULT_MAX_BYTES; const chunks = []; let total = 0; for await (const chunk of response.body) { total += chunk.length; if (total > maximum) throw new Error(`Response exceeds ${maximum} bytes`); chunks.push(Buffer.from(chunk)); } return Buffer.concat(chunks, total); } finally { clearTimeout(timer); } }
+export async function fetchText(url, options = {}) { return (await fetchBytes(url, options)).toString(options.encoding ?? 'utf8'); }
+export async function fetchJson(url, options = {}) { return JSON.parse(await fetchText(url, { ...options, headers: { accept: 'application/json', ...(options.headers ?? {}) } })); }
