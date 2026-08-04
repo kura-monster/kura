@@ -75,6 +75,31 @@ jobs:
           tar -xzf /tmp/kura-native-next-overlay.tgz -C .
           chmod +x bin/kr.mjs bin/kr-system.mjs
 
+      - name: Normalize packaged test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+          const packageFile = 'package.json';
+          const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
+          const tests = [
+            'test/cli-syntax.mjs',
+            'test/smoke.mjs',
+            'test/velocity.mjs',
+            'test/diagnostics.mjs',
+            'test/security.mjs',
+            'test/system.mjs',
+            'test/system-source.mjs',
+            'test/system-native.mjs',
+            'test/system-next.mjs',
+          ].filter(existsSync);
+          if (!tests.length) throw new Error('No packaged regression tests are available.');
+          pkg.scripts.test = tests.map(file => `node ${file}`).join(' && ');
+          pkg.scripts['test:system'] = tests.filter(file => file.includes('system')).map(file => `node ${file}`).join(' && ');
+          writeFileSync(packageFile, `${JSON.stringify(pkg, null, 2)}\n`);
+          NODE
+
       - name: Validate Kura toolchain
         shell: bash
         run: |
@@ -83,8 +108,26 @@ jobs:
           node --check bin/kr.mjs
           node --check bin/kr-system.mjs
           node --check lib/compiler.mjs
+          node --check lib/formatter.mjs
+          node --check lib/ai.mjs
+          node --check lib/dev-server.mjs
+          node --check lib/lsp-server.mjs
+          node --check lib/package-manager.mjs
+          node --check lib/standalone.mjs
+          node --check lib/test-runner.mjs
           node --check lib/system-native-compiler.mjs
           node --check lib/system-native-toolchain.mjs
+          node --input-type=module <<'NODE'
+          await Promise.all([
+            import('./lib/formatter.mjs'),
+            import('./lib/ai.mjs'),
+            import('./lib/dev-server.mjs'),
+            import('./lib/lsp-server.mjs'),
+            import('./lib/package-manager.mjs'),
+            import('./lib/standalone.mjs'),
+            import('./lib/test-runner.mjs'),
+          ]);
+          NODE
           npm test
           node bin/kr-system.mjs check examples/system/kernel-next.kr
           node bin/kr-system.mjs build examples/system/minimal-kernel.kr --out-dir /tmp/kura-native-build
