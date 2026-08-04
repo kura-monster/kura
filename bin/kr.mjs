@@ -384,7 +384,7 @@ async function createProject(name) {
       hint: 'Choose another project name or move the existing directory first.',
     });
   }
-  await mkdir(path.join(directory, 'src'), { recursive: true, mode: 0o00 });
+  await mkdir(path.join(directory, 'src'), { recursive: true, mode: 0o700 });
   const templateText = await readTextFileSecure(path.join(packageRoot, 'templates', 'kura.json'), { maxBytes: LIMITS.configBytes, allowSymlink: false });
   const config = validateProjectConfig(parseJsonSecure(templateText, 'templates/kura.json'), 'templates/kura.json');
   config.name = path.basename(directory);
