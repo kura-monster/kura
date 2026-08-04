@@ -114,6 +114,28 @@ unsafe {
 
 All operations that can alter machine state require an `unsafe` context.
 
+## Validation
+
+The implementation is validated through both language-level and binary-level checks:
+
+```bash
+npm test
+kr-system check examples/system/kernel-runtime.kr
+kr-system check examples/system/qemu-smoke.kr
+kr-system bootstrap -o /tmp/kura-bootstrap.S
+kr-system build-bootable examples/system/qemu-smoke.kr --out-dir /tmp/kura-kernel-build
+```
+
+The validation pipeline verifies that these files are non-empty:
+
+```text
+qemu-smoke.o
+kura-bootstrap.o
+qemu-smoke.elf
+```
+
+It also inspects the final ELF header, section table, and symbol table, requiring both `kura_boot_entry` and `kernel_main` to be present. The package regression suite is executed on Ubuntu and Windows with Node.js 20, 22, and 24.
+
 ## Current boundary
 
 This stage supplies a real boot bridge and early architecture runtime. It does not yet provide:
