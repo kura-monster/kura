@@ -140,13 +140,13 @@ It also inspects the final ELF header, section table, and symbol table, requirin
 
 This stage supplies a real boot bridge and early architecture runtime. It does not yet provide:
 
-- Multiboot2 memory-map parsing
-- reusable frame deallocation
-- virtual-address-space objects
+- Multiboot2 memory-map parsing and reserved-region filtering
+- reusable physical-frame deallocation
+- per-address-space page-table objects
 - a general-purpose heap allocator
-- ACPI MADT discovery
+- ACPI RSDP/XSDT and MADT discovery
 - IOAPIC routing
-- SMP startup
-- userspace or system calls
+- SMP application-processor startup
+- userspace privilege transitions and system calls
 
-Those layers can now be implemented on top of a bootable Kura kernel instead of only producing freestanding ELF code.
+The next layer starts with the Multiboot2 memory map, replaces fixed allocator ranges with discovered usable memory, and then builds reusable virtual-memory and heap allocators on top of it.
