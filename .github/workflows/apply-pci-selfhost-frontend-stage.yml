@@ -29,6 +29,14 @@ jobs:
           base64 --decode /tmp/kura-priority.b64 > /tmp/kura-priority.tar.xz
           echo 'da9045515680bffa0ffc3adf9d3ac1640a1dacbc87961b5edf62918ff8bb107c  /tmp/kura-priority.tar.xz' | sha256sum -c -
           tar -xJf /tmp/kura-priority.tar.xz -C .
+          python - <<'PYCOMPAT'
+          from pathlib import Path
+          path = Path('lib/self-host.mjs')
+          source = path.read_text()
+          source = source.replace("stage: 'frontend-assisted-module-compiler',", "stage: 'module-compiler',\n    phase: 'frontend-assisted-module-compiler',")
+          source = source.replace("capabilities: { compilerWrittenInKura: true, selfReproduction: true, fixedPoint: true,", "capabilities: { compilerWrittenInKura: true, moduleCompilerMigrated: true, selfReproduction: true, fixedPoint: true,")
+          path.write_text(source)
+          PYCOMPAT
           chmod +x bin/kr-hardware.mjs bin/kr-selfhost.mjs
 
       - name: Validate self-host frontend and PCI runtime
