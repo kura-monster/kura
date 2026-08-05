@@ -1,0 +1,28 @@
+name: QEMU hardware smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qemu-hardware-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - name: Install native and QEMU tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld grub-pc-bin grub-common xorriso mtools qemu-system-x86
+      - run: node bin/kr-hardware.mjs firmware-smoke
+      - run: node bin/kr-hardware.mjs qemu-smoke --out-dir build/qemu-hardware --timeout-ms 45000 --memory 256 --cpus 2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kura-qemu-hardware-smoke
+          path: build/qemu-hardware
+          if-no-files-found: warn
