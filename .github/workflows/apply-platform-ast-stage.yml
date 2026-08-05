@@ -61,6 +61,40 @@ jobs:
               raise SystemExit('runHardwareQemuSmoke block was not found')
           hardware.write_text(source.replace(old, new))
 
+          toolchain = Path('lib/system-native-toolchain.mjs')
+          source = toolchain.read_text()
+          old = """  const args = [
+            '-machine', options.machine ?? 'q35',
+            '-m', memory,
+            '-smp', String(cpus),
+            '-no-reboot', '-no-shutdown',
+            '-display', options.display ?? 'none',
+            '-monitor', 'none',
+          ];
+          """
+          new = """  const args = [
+            '-machine', options.machine ?? 'q35',
+            '-m', memory,
+            '-smp', String(cpus),
+            '-no-reboot',
+            '-display', options.display ?? 'none',
+            '-monitor', 'none',
+          ];
+            if (!options.debugExit) args.push('-no-shutdown');
+          """
+          if old not in source:
+              raise SystemExit('qemu argument block was not found')
+          source = source.replace(old, new)
+          source = source.replace(
+              "child.once('exit', code => {\n      if (timeout) clearTimeout(timeout);\n      const result = { command, args, commandText: commandText(command, args), code: code ?? 1, stdout, stderr, timedOut };",
+              "child.once('exit', (code, signal) => {\n      if (timeout) clearTimeout(timeout);\n      const result = { command, args, commandText: commandText(command, args), code: code ?? 1, signal: signal ?? null, stdout, stderr, timedOut };",
+          )
+          source = source.replace(
+              "timedOut ? `Command timed out: ${result.commandText}` : `Command failed (${code}): ${result.commandText}`",
+              "timedOut ? `Command timed out: ${result.commandText}` : `Command failed (${code ?? signal ?? 'unknown'}): ${result.commandText}`",
+          )
+          toolchain.write_text(source)
+
           test = Path('test/system-platform-firmware.mjs')
           source = test.read_text()
           source = source.replace(
@@ -69,7 +103,7 @@ jobs:
           )
           source = source.replace(
               "assert.equal(parsePciCapabilities(config).extended[0].id, 1);\nconsole.log('platform firmware tests passed');",
-              "assert.equal(parsePciCapabilities(config).extended[0].id, 1);\nconst qemu = await runHardwareQemuSmoke({ outDir: '/tmp/kura-platform-firmware-qemu-plan', dryRun: true });\nassert.equal(qemu.outputs.isoRoot, '/tmp/kura-platform-firmware-qemu-plan/iso-root');\nassert.equal(qemu.outputs.iso, '/tmp/kura-platform-firmware-qemu-plan/kernel.iso');\nassert.deepEqual(qemu.iso.step.args, ['-o', qemu.outputs.iso, qemu.outputs.isoRoot]);\nassert.equal(qemu.run.args.at(-1), qemu.outputs.iso);\nconsole.log('platform firmware tests passed');",
+              "assert.equal(parsePciCapabilities(config).extended[0].id, 1);\nconst qemu = await runHardwareQemuSmoke({ outDir: '/tmp/kura-platform-firmware-qemu-plan', dryRun: true });\nassert.equal(qemu.outputs.isoRoot, '/tmp/kura-platform-firmware-qemu-plan/iso-root');\nassert.equal(qemu.outputs.iso, '/tmp/kura-platform-firmware-qemu-plan/kernel.iso');\nassert.deepEqual(qemu.iso.step.args, ['-o', qemu.outputs.iso, qemu.outputs.isoRoot]);\nassert.equal(qemu.run.args.at(-1), qemu.outputs.iso);\nassert.equal(qemu.run.args.includes('-no-shutdown'), false);\nconsole.log('platform firmware tests passed');",
           )
           test.write_text(source)
 
@@ -97,6 +131,7 @@ jobs:
           node --check lib/system-platform-firmware.mjs
           node --check lib/system-hardware-runtime.mjs
           node --check lib/system-hardware.mjs
+          node --check lib/system-native-toolchain.mjs
           node --check bin/kr-hardware.mjs
           npm test
           node bin/kr-selfhost.mjs bootstrap /tmp/kura-selfhost-ast > /tmp/kura-selfhost-bootstrap.json
