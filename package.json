@@ -13,7 +13,7 @@
     "./system": "./lib/system.mjs",
     "./system/source": "./lib/system-source.mjs",
     "./system/native": "./lib/system-native.mjs",
-    "./system/kernel-runtime": "./lib/system-kernel-runtime-vm.mjs",
+    "./system/kernel-runtime": "./lib/system-kernel-runtime-vm-native.mjs",
     "./runtime/gpu": "./runtime/gpu.mjs",
     "./package.json": "./package.json",
     "./diagnostics": "./lib/diagnostics.mjs",
