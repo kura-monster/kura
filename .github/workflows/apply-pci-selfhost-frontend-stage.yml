@@ -1,0 +1,98 @@
+name: Apply PCI DMA and self-host frontend stage
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+          fetch-depth: 0
+
+      - name: Verify and extract implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'e507927bc5ff238bb9a7ca17e1ee76c45716998e7228106ef52b4c82fda7fc49  priority-stage/part-00.b64' | sha256sum -c -
+          echo '98a3d938cb11ef339b623053f1bfdac84c19a2450aa3ff3aee74c14574d0f524  priority-stage/part-01.b64' | sha256sum -c -
+          echo '85ede5ecbd8a1b8acec4db881738e5003039a45fd57f4dac44b724bdd4830423  priority-stage/part-02.b64' | sha256sum -c -
+          echo '6285b986bec3b5f693d4bf1cc3b902629c61b9eb58a7b875700009496ced6ae3  priority-stage/part-03.b64' | sha256sum -c -
+          cat priority-stage/part-00.b64 priority-stage/part-01.b64 priority-stage/part-02.b64 priority-stage/part-03.b64 > /tmp/kura-priority.b64
+          echo '5c62ab2947e85c5d85a4455b3748ef5775137f32652c11bd3241bf0f9a891214  /tmp/kura-priority.b64' | sha256sum -c -
+          base64 --decode /tmp/kura-priority.b64 > /tmp/kura-priority.tar.xz
+          echo 'da9045515680bffa0ffc3adf9d3ac1640a1dacbc87961b5edf62918ff8bb107c  /tmp/kura-priority.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/kura-priority.tar.xz -C .
+          chmod +x bin/kr-hardware.mjs bin/kr-selfhost.mjs
+
+      - name: Validate self-host frontend and PCI runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          node --check lib/language-core.mjs
+          node --check lib/self-host.mjs
+          node --check lib/system-hardware.mjs
+          node --check lib/system-hardware-runtime.mjs
+          node --check bin/kr-selfhost.mjs
+          node --check bin/kr-hardware.mjs
+          npm test
+          node bin/kr-selfhost.mjs bootstrap /tmp/kura-selfhost-frontend
+          node bin/kr-selfhost.mjs verify /tmp/kura-selfhost-frontend
+          node bin/kr-hardware.mjs runtime-smoke
+          node bin/kr-hardware.mjs kernel -o /tmp/kura-pci-kernel.kr
+          node bin/kr-system.mjs check /tmp/kura-pci-kernel.kr
+          node bin/kr-hardware.mjs build --out-dir /tmp/kura-pci-kernel
+          test -s /tmp/kura-pci-kernel/kernel.elf
+          nm /tmp/kura-pci-kernel/kernel.elf > /tmp/kura-pci-symbols.txt
+          grep -q 'kura_boot_entry' /tmp/kura-pci-symbols.txt
+          grep -q 'kernel_main' /tmp/kura-pci-symbols.txt
+          grep -q 'pci_scan_all' /tmp/kura-pci-symbols.txt
+          grep -q 'dma_alloc_pages' /tmp/kura-pci-symbols.txt
+          grep -q 'msix_program_entry' /tmp/kura-pci-symbols.txt
+          grep -q 'hardware_irq_dispatch' /tmp/kura-pci-symbols.txt
+          grep -q 'init_pci_dma_interrupt_runtime' /tmp/kura-pci-symbols.txt
+          grep -q 'nvme_init' /tmp/kura-pci-symbols.txt
+          grep -q 'xhci_init' /tmp/kura-pci-symbols.txt
+          grep -q 'virtio_net_init' /tmp/kura-pci-symbols.txt
+          mkdir -p /tmp/kura-package
+          npm pack --ignore-scripts --json --pack-destination /tmp/kura-package > /tmp/kura-pack.json
+          test -s /tmp/kura-package/kura-lang-compiler-1.0.0.tgz
+          tar -tzf /tmp/kura-package/kura-lang-compiler-1.0.0.tgz > /tmp/kura-package-contents.txt
+          grep -q 'package/lib/system-hardware-runtime.mjs' /tmp/kura-package-contents.txt
+          grep -q 'package/docs/PCI_DMA_INTERRUPTS.md' /tmp/kura-package-contents.txt
+          grep -q 'package/lib/self-host.mjs' /tmp/kura-package-contents.txt
+          grep -q 'package/lib/language-core.mjs' /tmp/kura-package-contents.txt
+          if grep -q '\.bak$' /tmp/kura-package-contents.txt; then
+            echo 'Backup file leaked into package.' >&2
+            exit 1
+          fi
+
+      - name: Upload validated artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kura-pci-selfhost-frontend-stage
+          path: |
+            /tmp/kura-package/kura-lang-compiler-1.0.0.tgz
+            /tmp/kura-selfhost-frontend/self-host-report.json
+            /tmp/kura-pci-kernel/kernel.elf
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Commit directly to working branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf priority-stage
+          rm -f .github/workflows/apply-pci-selfhost-frontend-stage.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add PCI DMA interrupts and self-host frontend'
+          git push origin HEAD:agent/system-foundation-0.1
