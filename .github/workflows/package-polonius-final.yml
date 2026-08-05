@@ -1,0 +1,99 @@
+name: Package final Polonius artifacts
+
+on:
+  pull_request:
+    branches:
+      - agent/polonius-final-artifact-base
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install and run full regression
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          npm test
+          npm audit --omit=dev --audit-level=high
+
+      - name: Validate self-host Polonius and traits
+        run: |
+          set -euo pipefail
+          rm -rf build/final-polonius artifacts/final-polonius
+          mkdir -p build/final-polonius artifacts/final-polonius package-out
+
+          node bin/kr-selfhost.mjs bootstrap build/final-polonius > artifacts/final-polonius/self-host-report.json
+          node bin/kr-selfhost.mjs verify build/final-polonius > artifacts/final-polonius/self-host-verify.json
+          node bin/kr-selfhost.mjs regions examples/language/polonius-specialization.kr > artifacts/final-polonius/regions-report.json
+          node bin/kr-selfhost.mjs borrow examples/language/polonius-specialization.kr > artifacts/final-polonius/borrow-report.json
+          node bin/kr-selfhost.mjs traits examples/language/polonius-specialization.kr --trait Wrapper --type 'Box<i32>' --assoc Output > artifacts/final-polonius/recursive-projection-report.json
+          node bin/kr-selfhost.mjs traits examples/language/polonius-specialization.kr --trait Show --type 'Box<i32>' --assoc Out > artifacts/final-polonius/specialization-report.json
+          node bin/kr-selfhost.mjs traits examples/language/polonius-specialization.kr --trait Send --type Never > artifacts/final-polonius/negative-impl-report.json || true
+
+          grep -q '"fixedPoint": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"poloniusRegionFactsWrittenInKura": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"loopFixedPointDataflowWrittenInKura": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"varianceInferenceWrittenInKura": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"pinnedGeneratorBorrowModelWrittenInKura": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"negativeImplCheckingWrittenInKura": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"specializationOrderingWrittenInKura": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"recursiveAssociatedTypeProjectionWrittenInKura": true' artifacts/final-polonius/self-host-report.json
+          grep -q '"ok": true' artifacts/final-polonius/self-host-verify.json
+          grep -q '1.1-kura-polonius-loop-region-analyzer' artifacts/final-polonius/regions-report.json
+          grep -q '2.1-kura-polonius-pin-generator-borrow-checker' artifacts/final-polonius/borrow-report.json
+          grep -q '"i32"' artifacts/final-polonius/recursive-projection-report.json
+          grep -q '"String"' artifacts/final-polonius/specialization-report.json
+          grep -q 'KR-SELF-TRAIT-1201' artifacts/final-polonius/negative-impl-report.json
+
+          cat > /tmp/kura-loop-move.kr <<'KR'
+          pub fn broken(mut value: String, condition: bool) -> String {
+            while condition {
+              move value
+            }
+            return value
+          }
+          KR
+          node bin/kr-selfhost.mjs regions /tmp/kura-loop-move.kr > artifacts/final-polonius/loop-fixed-point-diagnostic.json || true
+          grep -q 'KR-SELF-LOOP-0001' artifacts/final-polonius/loop-fixed-point-diagnostic.json
+
+          npm pack --ignore-scripts --json --pack-destination package-out > artifacts/final-polonius/pack-report.json
+          cp package-out/kura-lang-compiler-1.0.0.tgz artifacts/final-polonius/kura-lang-compiler-1.0.0-polonius-traits.tgz
+          tar -tzf artifacts/final-polonius/kura-lang-compiler-1.0.0-polonius-traits.tgz > artifacts/final-polonius/package-contents.txt
+          grep -q 'package/docs/SELF_HOSTED_POLONIUS_TRAITS.md' artifacts/final-polonius/package-contents.txt
+          grep -q 'package/examples/language/polonius-specialization.kr' artifacts/final-polonius/package-contents.txt
+
+      - name: Build and boot kernel
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang lld grub-pc-bin grub-common xorriso mtools qemu-system-x86
+          node bin/kr-hardware.mjs build --out-dir build/final-polonius-kernel > artifacts/final-polonius/kernel-build-report.json
+          grub-file --is-x86-multiboot2 build/final-polonius-kernel/kernel.elf
+          cp build/final-polonius-kernel/kernel.elf artifacts/final-polonius/kura-polonius-kernel.elf
+          node bin/kr-hardware.mjs qemu-smoke --out-dir build/final-polonius-qemu --timeout-ms 45000 --memory 256 --cpus 2 --json > artifacts/final-polonius/qemu-report.json
+          grep -q '"code": 33' artifacts/final-polonius/qemu-report.json
+          grep -q '"timedOut": false' artifacts/final-polonius/qemu-report.json
+          grep -q 'acpi-root-and-mcfg-discovered' artifacts/final-polonius/qemu-report.json
+          cp build/final-polonius-qemu/kernel.iso artifacts/final-polonius/kura-polonius-qemu.iso
+          cp build/final-polonius-qemu/kernel.elf artifacts/final-polonius/kura-polonius-qemu-kernel.elf
+          cp build/final-polonius-qemu/serial.log artifacts/final-polonius/qemu-serial.log
+          (cd artifacts/final-polonius && sha256sum * > SHA256SUMS)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kura-polonius-final
+          path: artifacts/final-polonius
+          if-no-files-found: error
