@@ -1,7 +1,7 @@
 {
   "name": "@kura-lang/compiler",
   "version": "1.0.0",
-  "description": "Kura v1 compiler with Kura-authored frontend checks, high-level LLVM, async structured concurrency, x86_64 userspace, PCI/BAR/DMA/IOMMU/MSI-X, NVMe, xHCI/HID, VirtIO-Net, framebuffer, ownership, SMP, and production tooling",
+  "description": "Kura v1 compiler with Kura-authored AST frontend, ACPI/PCIe ECAM, VT-d/AMD-Vi discovery, QEMU boot validation, high-level LLVM, async, userspace, PCI/DMA/MSI-X and native drivers",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
@@ -46,7 +46,8 @@
     "./system/userspace": "./lib/system-userspace.mjs",
     "./self-host": "./lib/self-host.mjs",
     "./system/hardware": "./lib/system-hardware.mjs",
-    "./system/hardware-runtime": "./lib/system-hardware-runtime.mjs"
+    "./system/hardware-runtime": "./lib/system-hardware-runtime.mjs",
+    "./system/platform-firmware": "./lib/system-platform-firmware.mjs"
   },
   "files": [
     "bin",
@@ -171,7 +172,17 @@
     "interrupt-routing",
     "self-host-frontend",
     "while-loops",
-    "array-indexing"
+    "array-indexing",
+    "acpi-mcfg",
+    "pcie-ecam",
+    "dmar",
+    "ivrs",
+    "intel-vtd",
+    "amd-vi",
+    "qemu-boot",
+    "self-host-ast",
+    "symbol-table",
+    "self-host-type-checker"
   ],
   "repository": {
     "type": "git",
@@ -182,7 +193,7 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs",
+    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs && node test/self-host-ast.mjs && node test/system-platform-firmware.mjs",
     "test:security": "node test/security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
     "check:package": "npm pack --dry-run --json",
@@ -190,9 +201,9 @@
     "test:features": "node test/formatter.mjs && node test/stdlib.mjs && node test/test-runner.mjs && node test/package-manager.mjs",
     "test:next": "node test/ai.mjs && node test/dev-server.mjs && node test/standalone.mjs",
     "test:lsp": "node test/lsp.mjs",
-    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs",
-    "test:native": "node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs",
-    "test:system-next": "node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs",
+    "test:system": "node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs && node test/self-host-ast.mjs && node test/system-platform-firmware.mjs",
+    "test:native": "node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs && node test/self-host-ast.mjs && node test/system-platform-firmware.mjs",
+    "test:system-next": "node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs && node test/self-host-ast.mjs && node test/system-platform-firmware.mjs",
     "test:kernel-runtime": "node test/system-kernel-runtime.mjs",
     "test:cli": "node test/cli-syntax.mjs",
     "test:kernel-platform": "node test/system-kernel-platform.mjs",
@@ -205,6 +216,8 @@
     "test:userspace": "node test/system-userspace.mjs",
     "test:self-host": "node test/self-host.mjs && node test/self-host-frontend.mjs",
     "self-host": "node bin/kr-selfhost.mjs bootstrap build/self-host",
-    "test:hardware": "node test/system-hardware.mjs && node test/system-hardware-runtime.mjs"
+    "test:hardware": "node test/system-hardware.mjs && node test/system-hardware-runtime.mjs && node test/self-host-ast.mjs && node test/system-platform-firmware.mjs",
+    "test:firmware": "node test/system-platform-firmware.mjs",
+    "qemu:hardware": "node bin/kr-hardware.mjs qemu-smoke"
   }
 }

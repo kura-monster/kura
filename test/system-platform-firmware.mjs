@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+import assert from 'node:assert/strict';
+import { createPlatformFirmwareManifest, createPlatformFirmwareKernelSource, platformFirmwareSmokeTest, parsePciCapabilities } from '../lib/system-platform-firmware.mjs';
+import { runHardwareQemuSmoke } from '../lib/system-hardware.mjs';
+const result = await platformFirmwareSmokeTest();
+assert.equal(result.ok, true);
+assert.deepEqual(result.tables, ['MCFG', 'DMAR']);
+assert.equal(result.msix.tableAddress, 0x90002000n);
+assert.equal(result.vtd.contexts, 1);
+const source = createPlatformFirmwareKernelSource();
+assert.match(source, /ACPI_RSDP = RSDP_ADDRESS/);
+assert.match(source, /pcie_ecam_address/);
+assert.match(source, /vtd_enable_translation/);
+assert.equal(createPlatformFirmwareManifest().pcie.ecam, true);
+const config = new Uint8Array(4096); const view = new DataView(config.buffer); view.setUint32(0x100, 0x00010001, true);
+assert.equal(parsePciCapabilities(config).extended[0].id, 1);
+const qemu = await runHardwareQemuSmoke({ outDir: '/tmp/kura-platform-firmware-qemu-plan', dryRun: true });
+assert.equal(qemu.outputs.isoRoot, '/tmp/kura-platform-firmware-qemu-plan/iso-root');
+assert.equal(qemu.outputs.iso, '/tmp/kura-platform-firmware-qemu-plan/kernel.iso');
+assert.deepEqual(qemu.iso.step.args, ['-o', qemu.outputs.iso, qemu.outputs.isoRoot]);
+assert.equal(qemu.run.args.at(-1), qemu.outputs.iso);
+assert.equal(qemu.run.args.includes('-no-shutdown'), false);
+assert.match(qemu.run.args[qemu.run.args.indexOf('-debugcon') + 1], /^file:/);
+console.log('platform firmware tests passed');

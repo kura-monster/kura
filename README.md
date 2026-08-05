@@ -107,7 +107,7 @@ kr-selfhost compile app.kr -o app.mjs
 kr-selfhost bootstrap build/self-host
 ```
 
-See `docs/HARDWARE_DRIVERS.md`, `docs/PCI_DMA_INTERRUPTS.md`, and `docs/SELF_HOSTING.md` for the exact supported scope.
+See `docs/HARDWARE_DRIVERS.md`, `docs/PCI_DMA_INTERRUPTS.md`, `docs/PLATFORM_FIRMWARE.md`, and `docs/SELF_HOSTING.md` for the exact supported scope.
 
 ## License
 

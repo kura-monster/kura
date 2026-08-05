@@ -17,7 +17,10 @@ The frontend module now performs executable compiler work:
 - function declaration checks;
 - duplicate function detection;
 - bootstrap scalar type checking;
-- simple move-after-use diagnostics.
+- simple move-after-use diagnostics;
+- executable AST construction for functions, parameters, local declarations, returns, assignments, calls, `if` and `while`;
+- module and function symbol-table construction;
+- bootstrap initializer, return-type and call-arity checking.
 
 To support this code, the typed Kura frontend now understands arrays, indexing, assignments, compound assignments, `while`, `break`, `continue` and `null`.
 
@@ -39,4 +42,4 @@ kr-selfhost bootstrap build/self-host
 kr-selfhost verify build/self-host
 ```
 
-This is not yet a claim that the whole production compiler is self-hosted. The complete production AST parser, generic and trait solver, full NLL borrow dataflow, LLVM backend, package manager and LSP still use trusted JavaScript implementations. The migration manifest reports those remaining components explicitly.
+This is not yet a claim that the whole production compiler is self-hosted. The complete production expression/pattern parser, generic and trait solver, full NLL borrow dataflow, LLVM backend, package manager and LSP still use trusted JavaScript implementations. The migration manifest reports those remaining components explicitly.
