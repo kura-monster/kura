@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { writeSelfHostArtifacts, verifySelfHostArtifacts, compileWithSelfHostedCompiler, createSelfHostMigrationManifest, SELF_HOST_COMPILER_SOURCE, SELF_HOST_FRONTEND_SOURCE } from '../lib/self-host.mjs';
+import { writeSelfHostArtifacts, verifySelfHostArtifacts, compileWithSelfHostedCompiler, analyzeWithSelfHostedFrontend, parseWithSelfHostedFrontend, createSelfHostMigrationManifest, SELF_HOST_COMPILER_SOURCE, SELF_HOST_FRONTEND_SOURCE } from '../lib/self-host.mjs';
 
 const args = process.argv.slice(2);
 const command = args.shift() ?? 'help';
@@ -10,7 +10,7 @@ const take = (name, fallback = null) => { const index = args.indexOf(name); if (
 const output = take('-o', take('--output'));
 
 function help() {
-  console.log('kr-selfhost source\nkr-selfhost frontend-source\nkr-selfhost manifest\nkr-selfhost compile <file.kr> [-o output.mjs]\nkr-selfhost bootstrap [directory]\nkr-selfhost verify [directory]');
+  console.log('kr-selfhost source\nkr-selfhost frontend-source\nkr-selfhost manifest\nkr-selfhost compile <file.kr> [-o output.mjs]\nkr-selfhost semantic <file.kr>\nkr-selfhost expression <expression>\nkr-selfhost pattern <pattern>\nkr-selfhost bootstrap [directory]\nkr-selfhost verify [directory]');
 }
 
 try {
@@ -23,6 +23,13 @@ try {
     const source = await readFile(resolve(file), 'utf8'); const result = await compileWithSelfHostedCompiler(source);
     if (output) { const destination = resolve(output); await mkdir(dirname(destination), { recursive: true }); await writeFile(destination, result.code, 'utf8'); console.log(destination); }
     else console.log(result.code);
+  } else if (command === 'semantic') {
+    const file = args.shift(); if (!file) throw new Error('Source file required.');
+    const source = await readFile(resolve(file), 'utf8');
+    console.log(JSON.stringify(await analyzeWithSelfHostedFrontend(source), null, 2));
+  } else if (command === 'expression' || command === 'pattern') {
+    const source = args.join(' '); if (!source) throw new Error(`${command} source required.`);
+    console.log(JSON.stringify(await parseWithSelfHostedFrontend(command, source), null, 2));
   } else if (command === 'bootstrap') {
     const result = await writeSelfHostArtifacts(args[0] ?? 'build/self-host');
     console.log(JSON.stringify({ fixedPoint: result.fixedPoint, hashes: result.hashes, files: result.files, stage1Version: result.stage1Version, frontendVersion: result.frontendVersion, frontendAnalysis: result.frontendSelfAnalysis, migration: result.migration, capabilities: result.capabilities }, null, 2));

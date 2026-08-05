@@ -3,7 +3,7 @@
 Kura contains two connected bootstrap components.
 
 1. A compact Kura-written module emitter reproduces itself through Stage 1, Stage 2 and Stage 3. Stage 2 and Stage 3 output must be byte-identical.
-2. A larger frontend module written in Kura is compiled by the trusted Stage 0 compiler and executed during every bootstrap validation.
+2. A larger semantic frontend module written in Kura is compiled by the trusted Stage 0 compiler and executed during every bootstrap validation.
 
 ## Kura-authored frontend logic
 
@@ -19,8 +19,13 @@ The frontend module now performs executable compiler work:
 - bootstrap scalar type checking;
 - simple move-after-use diagnostics;
 - executable AST construction for functions, parameters, local declarations, returns, assignments, calls, `if` and `while`;
+- precedence-climbing expression ASTs for literals, names, calls, arrays, indexing, unary and binary operators;
+- enum-style, binding, wildcard, literal, alternative and `@` patterns;
+- generic parameter and `where`-clause parsing;
+- trait declaration, implementation and bound validation;
+- branch-join and conservative loop move-state dataflow;
 - module and function symbol-table construction;
-- bootstrap initializer, return-type and call-arity checking.
+- expression-driven initializer and return-type inference plus call-arity checking.
 
 To support this code, the typed Kura frontend now understands arrays, indexing, assignments, compound assignments, `while`, `break`, `continue` and `null`.
 
@@ -38,8 +43,11 @@ kr-selfhost source
 kr-selfhost frontend-source
 kr-selfhost manifest
 kr-selfhost compile app.kr -o app.mjs
+kr-selfhost semantic app.kr
+kr-selfhost expression "1 + 2 * 3"
+kr-selfhost pattern "Option::Some(value) | Option::None"
 kr-selfhost bootstrap build/self-host
 kr-selfhost verify build/self-host
 ```
 
-This is not yet a claim that the whole production compiler is self-hosted. The complete production expression/pattern parser, generic and trait solver, full NLL borrow dataflow, LLVM backend, package manager and LSP still use trusted JavaScript implementations. The migration manifest reports those remaining components explicitly.
+This is not yet a claim that the whole production compiler is self-hosted. The Kura-authored frontend now owns a meaningful subset of expression parsing, pattern parsing, generic constraints and move dataflow. The complete production declaration/pattern grammar, associated types and coherence solver, path-sensitive NLL, LLVM backend, package manager and LSP still use trusted JavaScript implementations. The migration manifest reports those remaining components explicitly.

@@ -10,4 +10,8 @@ kr-hardware firmware-smoke
 kr-hardware qemu-smoke --out-dir build/hardware-qemu-smoke
 ```
 
-The QEMU smoke command builds the complete scheduler/userspace/hardware kernel, creates a GRUB ISO and boots through Multiboot2 into the 64-bit kernel. The deterministic smoke checkpoint exits after GDT, IDT and initial paging are established, before device MMIO is touched. ACPI, ECAM, MSI-X and IOMMU behavior is validated separately by executable models, generated-source checks and linked ELF symbols. Real Intel VT-d and AMD-Vi validation still requires machines or virtual platforms exposing those units; the parser and register plans do not imply that every vendor implementation has been exercised.
+The QEMU smoke command builds the complete scheduler/userspace/hardware kernel, creates a GRUB ISO and boots through Multiboot2 into the 64-bit kernel. The deterministic smoke checkpoint now continues through Multiboot2 memory discovery, validates the ACPI root, locates the MCFG table, and only then exits. Device MMIO is still not touched by the smoke checkpoint. ACPI, ECAM, MSI-X and IOMMU behavior is validated separately by executable models, generated-source checks and linked ELF symbols. Real Intel VT-d and AMD-Vi validation still requires machines or virtual platforms exposing those units; the parser and register plans do not imply that every vendor implementation has been exercised.
+
+## QEMU checkpoint contract
+
+The successful checkpoint writes serial byte `0x41` and exits through `isa-debug-exit` only after both `acpi_root_table()` and `acpi_find_table(MCFG)` return non-zero addresses. Failure writes `0x45` and uses a distinct exit code. This verifies GRUB, Multiboot2 ACPI tags, long mode, paging, boot-info parsing, ACPI checksums and MCFG discovery without relying on emulated device register behavior.

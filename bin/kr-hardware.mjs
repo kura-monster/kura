@@ -49,7 +49,7 @@ try {
     console.log(JSON.stringify(await platformFirmwareSmokeTest(), (_, value) => typeof value === 'bigint' ? `0x${value.toString(16)}` : value, 2));
   } else if (command === 'qemu-smoke') {
     const result = await runHardwareQemuSmoke({ outDir: resolve(outDir), timeoutMs, memory, cpus, dryRun });
-    const summary = { iso: result.outputs.iso, elf: result.outputs.elf, dryRun, qemu: result.run ? { code: result.run.code, stdout: result.run.stdout, stderr: result.run.stderr, timedOut: result.run.timedOut, commandText: result.run.commandText } : null };
+    const summary = { iso: result.outputs.iso, elf: result.outputs.elf, dryRun, checkpoint: result.checkpoint, qemu: result.run ? { code: result.run.code, stdout: result.run.stdout, stderr: result.run.stderr, timedOut: result.run.timedOut, commandText: result.run.commandText } : null };
     console.log(json || dryRun ? JSON.stringify(summary, null, 2) : `QEMU hardware smoke passed: ${result.outputs.iso}`);
   } else throw new Error(`Unknown command '${command}'.`);
 } catch (error) {
