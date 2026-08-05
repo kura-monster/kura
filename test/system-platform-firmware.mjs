@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { createPlatformFirmwareManifest, createPlatformFirmwareKernelSource, platformFirmwareSmokeTest, parsePciCapabilities } from '../lib/system-platform-firmware.mjs';
 import { runHardwareQemuSmoke } from '../lib/system-hardware.mjs';
 const result = await platformFirmwareSmokeTest();
@@ -14,9 +15,10 @@ assert.match(source, /vtd_enable_translation/);
 assert.equal(createPlatformFirmwareManifest().pcie.ecam, true);
 const config = new Uint8Array(4096); const view = new DataView(config.buffer); view.setUint32(0x100, 0x00010001, true);
 assert.equal(parsePciCapabilities(config).extended[0].id, 1);
-const qemu = await runHardwareQemuSmoke({ outDir: '/tmp/kura-platform-firmware-qemu-plan', dryRun: true });
-assert.equal(qemu.outputs.isoRoot, '/tmp/kura-platform-firmware-qemu-plan/iso-root');
-assert.equal(qemu.outputs.iso, '/tmp/kura-platform-firmware-qemu-plan/kernel.iso');
+const qemuOutDir = path.resolve('/tmp/kura-platform-firmware-qemu-plan');
+const qemu = await runHardwareQemuSmoke({ outDir: qemuOutDir, dryRun: true });
+assert.equal(qemu.outputs.isoRoot, path.join(qemuOutDir, 'iso-root'));
+assert.equal(qemu.outputs.iso, path.join(qemuOutDir, 'kernel.iso'));
 assert.deepEqual(qemu.iso.step.args, ['-o', qemu.outputs.iso, qemu.outputs.isoRoot]);
 assert.equal(qemu.run.args.at(-1), qemu.outputs.iso);
 assert.equal(qemu.run.args.includes('-no-shutdown'), false);
