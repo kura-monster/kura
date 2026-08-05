@@ -1,30 +1,42 @@
-# Self-host bootstrap
+# Self-host bootstrap and Kura-authored frontend
 
-Kura includes a compiler written in Kura that reproduces its own Stage 1 JavaScript module compiler.
+Kura contains two connected bootstrap components.
 
-The current module-compiler stage supports:
+1. A compact Kura-written module emitter reproduces itself through Stage 1, Stage 2 and Stage 3. Stage 2 and Stage 3 output must be byte-identical.
+2. A larger frontend module written in Kura is compiled by the trusted Stage 0 compiler and executed during every bootstrap validation.
 
-- multiple exported and private functions;
-- cross-function calls;
-- synchronous and async function declarations;
-- `String`, `bool`, `i32`, `u32`, and `usize` annotation erasure;
-- immutable and mutable local binding lowering;
-- arithmetic expressions, returns, method calls, and ordinary JavaScript-compatible function bodies.
+## Kura-authored frontend logic
 
-Bootstrap sequence:
+The frontend module now performs executable compiler work:
 
-1. the existing trusted Stage 0 compiler compiles `examples/self-host/compiler.kr`;
-2. the resulting Stage 1 compiler compiles its own complete Kura module;
-3. the reproduced Stage 2 compiler compiles the same module again;
-4. Stage 2 and Stage 3 output hashes must match exactly;
-5. the reproduced compiler compiles and executes a separate multi-function probe.
+- deterministic lexical scanning;
+- line and column tracking;
+- string, number, identifier, keyword and symbol tokens;
+- comment skipping and escaped-string scanning;
+- delimiter balancing;
+- function declaration checks;
+- duplicate function detection;
+- bootstrap scalar type checking;
+- simple move-after-use diagnostics.
+
+To support this code, the typed Kura frontend now understands arrays, indexing, assignments, compound assignments, `while`, `break`, `continue` and `null`.
+
+## Bootstrap sequence
+
+1. trusted Stage 0 compiles the compact Kura module emitter;
+2. Stage 1 reproduces the emitter;
+3. Stage 2 reproduces it again and must match Stage 3;
+4. Stage 0 compiles the larger Kura frontend module;
+5. the Kura frontend scans and validates itself and the probe program;
+6. the reproduced module emitter compiles and executes the probe.
 
 ```bash
 kr-selfhost source
+kr-selfhost frontend-source
 kr-selfhost manifest
 kr-selfhost compile app.kr -o app.mjs
 kr-selfhost bootstrap build/self-host
 kr-selfhost verify build/self-host
 ```
 
-This is a real fixed-point bootstrap for the documented module-compiler subset. `kr-selfhost manifest` reports the exact migrated and remaining compiler subsystems. The typed tokenizer, full parser, trait solver, borrow checker, LLVM backend, and package manager still use the trusted JavaScript implementation and will be migrated incrementally rather than being falsely reported as self-hosted.
+This is not yet a claim that the whole production compiler is self-hosted. The complete production AST parser, generic and trait solver, full NLL borrow dataflow, LLVM backend, package manager and LSP still use trusted JavaScript implementations. The migration manifest reports those remaining components explicitly.

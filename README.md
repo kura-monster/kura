@@ -89,23 +89,25 @@ Strict mode is defense in depth rather than a complete operating-system sandbox.
 
 ## Native hardware drivers and expanded self-hosting
 
-Kura can generate a bootable scheduler/userspace kernel with NVMe, xHCI/HID, VirtIO-Net, and framebuffer driver foundations:
+Kura can generate a scheduler/userspace kernel with PCI hierarchy discovery, BAR resource assignment, DMA/IOMMU foundations, MSI/MSI-X routing, NVMe, xHCI/HID, VirtIO-Net, and framebuffer support:
 
 ```bash
 kr-hardware manifest --json
 kr-hardware kernel -o kernel-hardware.kr
 kr-hardware build --out-dir build/hardware
+kr-hardware runtime-smoke
 ```
 
-The Kura-written self-host compiler now emits multi-function modules, handles scalar type annotations, async function syntax, and mutable/immutable bindings, and verifies a Stage 2/Stage 3 fixed point:
+The fixed-point Kura module emitter is now accompanied by a Kura-authored frontend that performs real lexical scanning, source-position tracking, syntax checks, bootstrap type checks, and move-after-use diagnostics:
 
 ```bash
 kr-selfhost manifest
+kr-selfhost frontend-source
 kr-selfhost compile app.kr -o app.mjs
 kr-selfhost bootstrap build/self-host
 ```
 
-See `docs/HARDWARE_DRIVERS.md` and `docs/SELF_HOSTING.md` for the exact supported scope.
+See `docs/HARDWARE_DRIVERS.md`, `docs/PCI_DMA_INTERRUPTS.md`, and `docs/SELF_HOSTING.md` for the exact supported scope.
 
 ## License
 

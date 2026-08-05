@@ -39,8 +39,10 @@ kr-hardware emit -o hardware.kr
 kr-hardware kernel -o kernel-hardware.kr
 kr-hardware build --out-dir build/hardware
 kr-hardware smoke
+kr-hardware runtime-manifest --json
+kr-hardware runtime-smoke
 ```
 
 `kr-hardware kernel` integrates scheduler, Ring 3 userspace, syscall setup, and driver initialization into one bootable source. The generated boot path now calls both `init_userspace(GDT_BASE)` and `init_hardware_drivers()` before application processors are started.
 
-The current stage supplies standards-correct data structures, queue state machines, register initialization, and a linkable kernel. Full device discovery, MSI-X interrupt routing, DMA isolation through an IOMMU, and hardware-vendor-specific GPU acceleration remain later stages.
+The current stage also includes recursive PCI hierarchy scanning, BAR size probing and resource assignment, a contiguous DMA allocator, IOMMU domain models, MSI/MSI-X vector ownership, interrupt-driven queues, and generated kernel entry points for those services. See `PCI_DMA_INTERRUPTS.md`. Hardware-vendor-specific GPU acceleration and real Intel VT-d/AMD-Vi table programming remain later stages.

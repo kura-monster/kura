@@ -3,6 +3,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { createHardwareManifest, createHardwareKernelSource, createCompleteHardwareKernelSource, buildHardwareKernel, hardwareSmokeTest } from '../lib/system-hardware.mjs';
+import { createHardwareRuntimeManifest, hardwareRuntimeSmokeTest } from '../lib/system-hardware-runtime.mjs';
 
 const args = process.argv.slice(2);
 const command = args.shift() ?? 'help';
@@ -14,7 +15,7 @@ const json = flag('--json');
 const dryRun = flag('--dry-run');
 
 function help() {
-  console.log(`Kura hardware-driver foundation\n\nkr-hardware manifest [--json]\nkr-hardware emit -o hardware.kr\nkr-hardware kernel -o kernel-hardware.kr\nkr-hardware build [--out-dir build/hardware] [--dry-run]\nkr-hardware smoke\n`);
+  console.log(`Kura hardware-driver foundation\n\nkr-hardware manifest [--json]\nkr-hardware emit -o hardware.kr\nkr-hardware kernel -o kernel-hardware.kr\nkr-hardware build [--out-dir build/hardware] [--dry-run]\nkr-hardware smoke\nkr-hardware runtime-manifest [--json]\nkr-hardware runtime-smoke\n`);
 }
 
 try {
@@ -32,6 +33,11 @@ try {
     console.log(JSON.stringify({ outDir: result.plan.outDir, elf: result.plan.elf, dryRun, link: result.linkResult }, null, 2));
   } else if (command === 'smoke') {
     console.log(JSON.stringify(await hardwareSmokeTest(), null, 2));
+  } else if (command === 'runtime-manifest') {
+    const manifest = createHardwareRuntimeManifest();
+    console.log(json ? JSON.stringify(manifest, null, 2) : `PCI: recursive enumeration + BAR assignment\nDMA: contiguous allocator + IOMMU domains\nInterrupts: MSI/MSI-X + vector ownership`);
+  } else if (command === 'runtime-smoke') {
+    console.log(JSON.stringify(await hardwareRuntimeSmokeTest(), (_, value) => typeof value === 'bigint' ? `0x${value.toString(16)}` : value, 2));
   } else throw new Error(`Unknown command '${command}'.`);
 } catch (error) {
   console.error(error.stack ?? error.message);

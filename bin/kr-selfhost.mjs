@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { writeSelfHostArtifacts, verifySelfHostArtifacts, compileWithSelfHostedCompiler, createSelfHostMigrationManifest, SELF_HOST_COMPILER_SOURCE } from '../lib/self-host.mjs';
+import { writeSelfHostArtifacts, verifySelfHostArtifacts, compileWithSelfHostedCompiler, createSelfHostMigrationManifest, SELF_HOST_COMPILER_SOURCE, SELF_HOST_FRONTEND_SOURCE } from '../lib/self-host.mjs';
 
 const args = process.argv.slice(2);
 const command = args.shift() ?? 'help';
@@ -10,12 +10,13 @@ const take = (name, fallback = null) => { const index = args.indexOf(name); if (
 const output = take('-o', take('--output'));
 
 function help() {
-  console.log('kr-selfhost source\nkr-selfhost manifest\nkr-selfhost compile <file.kr> [-o output.mjs]\nkr-selfhost bootstrap [directory]\nkr-selfhost verify [directory]');
+  console.log('kr-selfhost source\nkr-selfhost frontend-source\nkr-selfhost manifest\nkr-selfhost compile <file.kr> [-o output.mjs]\nkr-selfhost bootstrap [directory]\nkr-selfhost verify [directory]');
 }
 
 try {
   if (command === 'help' || command === '--help' || command === '-h') { help(); process.exit(0); }
   if (command === 'source') console.log(SELF_HOST_COMPILER_SOURCE);
+  else if (command === 'frontend-source') console.log(SELF_HOST_FRONTEND_SOURCE);
   else if (command === 'manifest') console.log(JSON.stringify(createSelfHostMigrationManifest(), null, 2));
   else if (command === 'compile') {
     const file = args.shift(); if (!file) throw new Error('Source file required.');
@@ -24,7 +25,7 @@ try {
     else console.log(result.code);
   } else if (command === 'bootstrap') {
     const result = await writeSelfHostArtifacts(args[0] ?? 'build/self-host');
-    console.log(JSON.stringify({ fixedPoint: result.fixedPoint, hashes: result.hashes, files: result.files, stage1Version: result.stage1Version, migration: result.migration, capabilities: result.capabilities }, null, 2));
+    console.log(JSON.stringify({ fixedPoint: result.fixedPoint, hashes: result.hashes, files: result.files, stage1Version: result.stage1Version, frontendVersion: result.frontendVersion, frontendAnalysis: result.frontendSelfAnalysis, migration: result.migration, capabilities: result.capabilities }, null, 2));
   } else if (command === 'verify') {
     const result = await verifySelfHostArtifacts(args[0] ?? 'build/self-host'); console.log(JSON.stringify(result, null, 2)); if (!result.ok) process.exitCode = 1;
   } else throw new Error(`Unknown command ${command}.`);
