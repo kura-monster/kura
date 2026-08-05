@@ -89,3 +89,7 @@ kr-selfhost borrow examples/language/associated-borrow.kr
 ```
 
 This is the start of the production borrow-checker migration, not a full replacement. Complete CFG construction, region-variable inference, reborrowing, two-phase borrows, closure captures, async suspension points and interprocedural lifetime constraints still use trusted implementations.
+
+## CFG/region bootstrap artifacts
+
+Bootstrap output now includes `cfg-region.kr` and `cfg-region-stage0.mjs`. Verification reloads this analyzer and checks that it builds a valid function CFG and region plan before the Kura-authored borrow checker runs.

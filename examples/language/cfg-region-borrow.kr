@@ -1,0 +1,35 @@
+trait Iterator {
+  type Item
+}
+
+struct Box<T> {
+  value: T
+}
+
+impl<T> Iterator for Box<T> {
+  type Item = T
+}
+
+pub fn identity(value: &String) -> &String {
+  return value
+}
+
+pub fn append(mut values: Values) -> Values {
+  values.push(values.length)
+  return values
+}
+
+pub fn reborrow(mut value: String) -> String {
+  let root = &mut value
+  let child = &mut root
+  print(child)
+  print(root)
+  return value
+}
+
+pub async fn async_example(mut value: String) -> String {
+  let view = &value
+  print(view)
+  await task()
+  return value
+}
