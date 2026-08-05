@@ -1,0 +1,1 @@
+Final validation trigger for Kura-authored CFG, region inference, reborrow, two-phase borrow, closure capture, async borrow and trait projection.
