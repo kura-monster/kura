@@ -105,6 +105,7 @@ jobs:
           set -euo pipefail
           rm -rf platform-ast-stage
           rm -f .github/workflows/apply-platform-ast-stage.yml
+          rm -f .github/workflows/qemu-hardware-smoke.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
