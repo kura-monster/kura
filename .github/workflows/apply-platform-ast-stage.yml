@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y clang lld grub-pc-bin grub-common xorriso qemu-system-x86
+          sudo apt-get install -y clang lld grub-pc-bin grub-common xorriso mtools qemu-system-x86
 
       - name: Validate AST frontend and platform firmware
         shell: bash
@@ -65,7 +65,13 @@ jobs:
           grep -q 'pci_find_capability' /tmp/kura-platform-symbols.txt
           grep -q 'vtd_enable_translation' /tmp/kura-platform-symbols.txt
           grep -q 'amdvi_enable_translation' /tmp/kura-platform-symbols.txt
-          node bin/kr-hardware.mjs qemu-smoke --out-dir /tmp/kura-qemu-platform --timeout-ms 45000 --memory 256 --cpus 2 --json > /tmp/kura-qemu-report.json
+          if ! node bin/kr-hardware.mjs qemu-smoke --out-dir /tmp/kura-qemu-platform --timeout-ms 45000 --memory 256 --cpus 2 --json > /tmp/kura-qemu-report.json; then
+            echo 'QEMU smoke failed; collecting GRUB/ISO diagnostics.' >&2
+            find /tmp/kura-qemu-platform -maxdepth 5 -type f -print -exec file {} \; || true
+            grub-file --is-x86-multiboot2 /tmp/kura-qemu-platform/kernel.elf || true
+            grub-mkrescue -v -o /tmp/kura-qemu-platform/debug.iso /tmp/kura-qemu-platform/iso-root || true
+            exit 1
+          fi
           grep -q '"timedOut": false' /tmp/kura-qemu-report.json
           mkdir -p /tmp/kura-package
           npm pack --ignore-scripts --json --pack-destination /tmp/kura-package > /tmp/kura-pack.json
