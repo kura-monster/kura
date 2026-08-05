@@ -27,14 +27,14 @@ jobs:
             exit 0
           fi
 
-          echo '9a754409c43b68a0bc3cfe43e52534dff0997f16aafc6b958b397ab0a8326f08  patch-stage/part-00.b64' | sha256sum -c -
-          echo '18c38814b66a70934f83e22e0c34314c32ca7e8aa858851035b25b6ca4885c06  patch-stage/part-01.b64' | sha256sum -c -
+          echo '376156026cf9a94f0f335c9abb98eaf9697e4e40af8ab6c71034a65c56171623  patch-stage/part-00.b64' | sha256sum -c -
+          echo '555f04d6deba3fa811ff6ce38a54f13895c1c9e100b3198d1ce856b7fba29203  patch-stage/part-01.b64' | sha256sum -c -
           cat patch-stage/part-*.b64 > /tmp/kura-polonius.patch.b64
-          echo 'e67383cda68b910c3e74fde954b184a6d2c2b2e34cf38d465ea56c4539572580  /tmp/kura-polonius.patch.b64' | sha256sum -c -
+          echo 'e963fb4293c26d5b32672fc624d0da84be2846ef033f9d5c4e7c0802f207b847  /tmp/kura-polonius.patch.b64' | sha256sum -c -
           base64 --decode /tmp/kura-polonius.patch.b64 > /tmp/kura-polonius.patch.xz
-          echo 'e4994c5d3738ec2a489410581f89268ec5118846e27fbb9047fb56d22ae94c87  /tmp/kura-polonius.patch.xz' | sha256sum -c -
+          echo 'f31cf003a7b8b5488cbd5e6aa1905ead13f77946e10ac48fe9d2e9b3c132c52a  /tmp/kura-polonius.patch.xz' | sha256sum -c -
           xz -dc /tmp/kura-polonius.patch.xz > /tmp/kura-polonius.patch
-          echo '88758bc426eb48a8efbc07b64bb8808b7fcdbf15e010ca660d925c76c50eb29c  /tmp/kura-polonius.patch' | sha256sum -c -
+          echo '5aa9c20b102e8a0430daf0c530e5e719ee53bd59782fa908d1cfdbbf7a7f0b2c  /tmp/kura-polonius.patch' | sha256sum -c -
           git apply --check /tmp/kura-polonius.patch
           git apply /tmp/kura-polonius.patch
           chmod +x bin/kr-selfhost.mjs
