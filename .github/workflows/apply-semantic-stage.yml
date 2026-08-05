@@ -1,0 +1,87 @@
+name: Apply semantic frontend stage
+
+on:
+  pull_request:
+    branches:
+      - agent/semantic-frontend-validation-base
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/system-foundation-0.1
+          fetch-depth: 0
+
+      - name: Apply, validate and commit semantic frontend stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f semantic-stage/part-00.b64 ]; then
+            echo 'Semantic stage already applied.'
+            exit 0
+          fi
+
+          echo 'ba374855d1223486b33e8524e15add32849b01dec3b03c415d393cff9395135e  semantic-stage/part-00.b64' | sha256sum -c -
+          echo '31197d2e4921698fa2f01542f3163f198e405f7b1cf565f0d3bd956c6978e145  semantic-stage/part-01.b64' | sha256sum -c -
+          echo '91af5a0038163a7f0adf2457e11bdadfe19deb21472c333a0987cdd0b45d1b8e  semantic-stage/part-02-03.b64' | sha256sum -c -
+          cat semantic-stage/part-00.b64 semantic-stage/part-01.b64 semantic-stage/part-02-03.b64 > /tmp/kura-semantic-stage.b64
+          echo '47629ab361bde1331bd72d54c7f23df13390a5c106b02272c0aa69e7dc96ef70  /tmp/kura-semantic-stage.b64' | sha256sum -c -
+          base64 --decode /tmp/kura-semantic-stage.b64 > /tmp/kura-semantic-stage.tar.xz
+          echo '16b614a5b7b3f750f2a981e1e3270161bdde37fdd3fc84e92ab7c0cef64acecd  /tmp/kura-semantic-stage.tar.xz' | sha256sum -c -
+          tar -xJf /tmp/kura-semantic-stage.tar.xz -C .
+          chmod +x bin/kr-selfhost.mjs bin/kr-hardware.mjs
+
+          npm ci --ignore-scripts
+          node --check lib/self-host.mjs
+          node --check lib/system-hardware.mjs
+          node --check lib/system-platform-firmware.mjs
+          node --check bin/kr-selfhost.mjs
+          node --check bin/kr-hardware.mjs
+          npm test
+
+          rm -rf /tmp/kura-selfhost-semantic /tmp/kura-semantic-kernel /tmp/kura-semantic-qemu /tmp/kura-package
+          node bin/kr-selfhost.mjs bootstrap /tmp/kura-selfhost-semantic > /tmp/kura-selfhost-bootstrap.json
+          node bin/kr-selfhost.mjs verify /tmp/kura-selfhost-semantic > /tmp/kura-selfhost-verify.json
+          grep -q '"ok": true' /tmp/kura-selfhost-verify.json
+          grep -q '1.4-kura-semantic-frontend' /tmp/kura-selfhost-bootstrap.json
+
+          sudo apt-get update
+          sudo apt-get install -y clang lld grub-pc-bin grub-common xorriso mtools qemu-system-x86
+
+          node bin/kr-hardware.mjs build --out-dir /tmp/kura-semantic-kernel > /tmp/kura-semantic-kernel-build.json
+          test -s /tmp/kura-semantic-kernel/kernel.elf
+          grub-file --is-x86-multiboot2 /tmp/kura-semantic-kernel/kernel.elf
+          nm /tmp/kura-semantic-kernel/kernel.elf > /tmp/kura-semantic-symbols.txt
+          grep -q 'kernel_main' /tmp/kura-semantic-symbols.txt
+          grep -q 'init_platform_firmware' /tmp/kura-semantic-symbols.txt
+          grep -q 'acpi_root_table' /tmp/kura-semantic-symbols.txt
+          grep -q 'acpi_find_table' /tmp/kura-semantic-symbols.txt
+
+          node bin/kr-hardware.mjs qemu-smoke --out-dir /tmp/kura-semantic-qemu --timeout-ms 45000 --memory 256 --cpus 2 --json > /tmp/kura-semantic-qemu-report.json
+          grep -q '"code": 33' /tmp/kura-semantic-qemu-report.json
+          grep -q '"timedOut": false' /tmp/kura-semantic-qemu-report.json
+          grep -q 'acpi-root-and-mcfg-discovered' /tmp/kura-semantic-qemu-report.json
+          test -s /tmp/kura-semantic-qemu/kernel.iso
+          test -s /tmp/kura-semantic-qemu/serial.log
+
+          mkdir -p /tmp/kura-package
+          npm pack --ignore-scripts --json --pack-destination /tmp/kura-package > /tmp/kura-pack.json
+          test -s /tmp/kura-package/kura-lang-compiler-1.0.0.tgz
+          tar -tzf /tmp/kura-package/kura-lang-compiler-1.0.0.tgz > /tmp/kura-package-contents.txt
+          grep -q 'package/lib/self-host.mjs' /tmp/kura-package-contents.txt
+          grep -q 'package/lib/system-platform-firmware.mjs' /tmp/kura-package-contents.txt
+          grep -q 'package/docs/SELF_HOSTING.md' /tmp/kura-package-contents.txt
+          ! grep -q 'before-next' /tmp/kura-package-contents.txt
+
+          rm -rf semantic-stage
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Add Kura semantic frontend and ACPI QEMU checkpoint'
+          git push origin HEAD:agent/system-foundation-0.1
