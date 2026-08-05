@@ -1,0 +1,22 @@
+trait Iterator {
+  type Item
+}
+
+struct Numbers {
+  value: i32
+}
+
+impl Iterator for Numbers {
+  type Item = i32
+}
+
+pub fn update(mut value: String, condition: bool) -> String {
+  let view = &value
+  if condition {
+    print(view)
+  } else {
+    print(view)
+  }
+  value = "updated"
+  return value
+}

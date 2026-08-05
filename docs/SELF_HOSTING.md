@@ -51,3 +51,41 @@ kr-selfhost verify build/self-host
 ```
 
 This is not yet a claim that the whole production compiler is self-hosted. The Kura-authored frontend now owns a meaningful subset of expression parsing, pattern parsing, generic constraints and move dataflow. The complete production declaration/pattern grammar, associated types and coherence solver, path-sensitive NLL, LLVM backend, package manager and LSP still use trusted JavaScript implementations. The migration manifest reports those remaining components explicitly.
+
+## Associated types and coherence
+
+The bootstrap now compiles a separate trait solver authored in Kura. It consumes the frontend token stream and performs executable validation for:
+
+- associated type declarations and implementation bindings;
+- missing, duplicate and unknown associated type bindings;
+- local trait and local type discovery for the orphan rule;
+- exact and generic-shape implementation matching;
+- overlapping implementation detection;
+- concrete trait obligation lookup with associated type results.
+
+```bash
+kr-selfhost trait-solver-source
+kr-selfhost traits examples/language/associated-borrow.kr --trait Iterator --type Numbers
+```
+
+The solver is intentionally smaller than the production solver. It does not yet normalize recursive projections such as `T::Item::Output`, prove higher-ranked bounds, or implement specialization ordering. Those remain in the trusted production frontend.
+
+## Path-sensitive NLL borrow core
+
+A second Kura-authored module now evaluates normalized control-flow paths. The JavaScript bootstrap currently constructs the path plan from the Kura token stream; the actual loan state, field-path overlap, move state and last-use expiration are evaluated by Kura code.
+
+Supported checks include:
+
+- shared-versus-mutable and mutable-versus-any-loan conflicts;
+- field-sensitive paths such as `user.name` versus `user.age`;
+- moves and assignments while a loan remains live;
+- use-after-move and repeated moves;
+- assignment-based reinitialization;
+- separate `if`/`else` paths and zero/one-iteration loop paths;
+- non-lexical loan expiration at the final use of a reference on each path.
+
+```bash
+kr-selfhost borrow examples/language/associated-borrow.kr
+```
+
+This is the start of the production borrow-checker migration, not a full replacement. Complete CFG construction, region-variable inference, reborrowing, two-phase borrows, closure captures, async suspension points and interprocedural lifetime constraints still use trusted implementations.
