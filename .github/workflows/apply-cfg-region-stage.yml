@@ -82,7 +82,7 @@ jobs:
             return value
           }
           KR
-          node bin/kr-selfhost.mjs borrow /tmp/kura-async-borrow.kr > /tmp/kura-cfg-artifacts/async-borrow-report.json
+          node bin/kr-selfhost.mjs borrow /tmp/kura-async-borrow.kr > /tmp/kura-cfg-artifacts/async-borrow-report.json || true
           grep -q '"ok": false' /tmp/kura-cfg-artifacts/async-borrow-report.json
           grep -q 'KR-SELF-BORROW-0304' /tmp/kura-cfg-artifacts/async-borrow-report.json
 
