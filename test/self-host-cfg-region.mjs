@@ -29,7 +29,7 @@ struct Box<T> {}
 impl<T> Iterator for Box<T> { type Item = T }
 `, { trait: 'Iterator', type: 'Box<i32>', assoc: 'Item' });
 assert.equal(projection.ok, true);
-assert.equal(projection.version, '1.1-kura-hrtb-projection-trait-solver');
+assert.equal(projection.version, '1.2-kura-recursive-projection-specialization-solver');
 assert.equal(projection.projections[0][1], 'i32');
 
 const hrtb = await solveWithSelfHostedTraitSolver(`
@@ -50,11 +50,12 @@ pub fn update(mut value: String, condition: bool) -> String {
 }
 `);
 assert.equal(cfg.ok, true);
-assert.equal(cfg.version, '1.0-kura-cfg-region-analyzer');
+assert.equal(cfg.version, '1.1-kura-polonius-loop-region-analyzer');
 assert.equal(cfg.functions.length, 2);
 assert.equal(cfg.contracts[0][0], 'identity');
 assert.equal(cfg.contracts[0][1], 'value');
 assert.equal(cfg.plan.filter(([id]) => id.startsWith('update.')).length, 2);
+assert.equal(cfg.regionFacts.converged, true);
 
 const reborrow = await checkWithSelfHostedBorrowChecker(`
 pub fn edit(mut value: String) -> String {
@@ -131,7 +132,7 @@ try {
   assert.ok(artifacts.files.cfgRegion.endsWith('cfg-region-stage0.mjs'));
   const verified = await verifySelfHostArtifacts(artifactDirectory);
   assert.equal(verified.ok, true);
-  assert.equal(verified.cfgResult.version, '1.0-kura-cfg-region-analyzer');
+  assert.equal(verified.cfgResult.version, '1.1-kura-polonius-loop-region-analyzer');
 } finally {
   await rm(artifactDirectory, { recursive: true, force: true });
 }

@@ -124,3 +124,15 @@ Kura native code can enable strict move, borrow, lifetime, Send/Sync, shared-mem
 ```
 
 Use `kr-safety check <file.kr>` for strict validation and `kr-safety audit <file.kr>` for migration reports. See `docs/NATIVE_SAFETY.md`.
+
+## Polonius-style regions and trait specialization
+
+The self-host bootstrap now emits loan/CFG facts, computes a monotone live-loan closure, checks loop-carried move state, classifies shared/mutable generic variance, and models pinned references stored across async suspension points. The Kura-authored trait solver also supports negative implementations, deterministic default/specific implementation selection, and recursive associated-type projection normalization.
+
+```bash
+kr-selfhost regions examples/language/polonius-specialization.kr
+kr-selfhost borrow examples/language/polonius-specialization.kr
+kr-selfhost traits examples/language/polonius-specialization.kr --trait Wrapper --type "Box<i32>" --assoc Output
+```
+
+See `docs/SELF_HOSTED_POLONIUS_TRAITS.md` for the exact bootstrap subset and trust boundary.

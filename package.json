@@ -1,7 +1,7 @@
 {
   "name": "@kura-lang/compiler",
   "version": "1.0.0",
-  "description": "Kura v1 compiler with Kura-authored CFG/region inference, reborrows, two-phase and async-aware borrow analysis, higher-ranked associated-type projection, ACPI/PCIe ECAM, QEMU boot validation and native systems tooling",
+  "description": "Kura v1 compiler with Kura-authored Polonius-style region facts, loop fixed points, pinned generator borrows, specialization, negative impls, recursive projections, ACPI/PCIe ECAM, QEMU validation and native systems tooling",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
   "bin": {
@@ -190,7 +190,16 @@
     "qemu-boot",
     "self-host-ast",
     "symbol-table",
-    "self-host-type-checker"
+    "self-host-type-checker",
+    "polonius",
+    "region-facts",
+    "loop-fixed-point",
+    "variance",
+    "pin",
+    "generator-borrow",
+    "negative-impl",
+    "specialization",
+    "recursive-associated-type-projection"
   ],
   "repository": {
     "type": "git",
@@ -201,7 +210,7 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs && node test/self-host-ast.mjs && node test/system-platform-firmware.mjs && node test/self-host-semantics.mjs && node test/self-host-advanced-safety.mjs && node test/self-host-cfg-region.mjs",
+    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs && node test/system-kernel-platform.mjs && node test/system-kernel-scheduler.mjs && node test/system-native-safety.mjs && node test/language-core.mjs && node test/language-native-backend.mjs && node test/async-runtime.mjs && node test/developer-toolchain.mjs && node test/system-userspace.mjs && node test/self-host.mjs && node test/system-hardware.mjs && node test/language-control-flow.mjs && node test/self-host-frontend.mjs && node test/system-hardware-runtime.mjs && node test/self-host-ast.mjs && node test/system-platform-firmware.mjs && node test/self-host-semantics.mjs && node test/self-host-advanced-safety.mjs && node test/self-host-cfg-region.mjs && node test/self-host-polonius-traits.mjs",
     "test:security": "node test/security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
     "check:package": "npm pack --dry-run --json",

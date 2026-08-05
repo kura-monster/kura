@@ -1,0 +1,62 @@
+trait Iterator {
+  type Item
+}
+
+trait Wrapper {
+  type Output
+}
+
+trait Show {
+  type Out
+}
+
+trait Send {
+  type Marker
+}
+
+struct Box<T> {
+  value: T
+}
+
+struct Never {}
+
+struct Shared<T> {
+  value: &T
+}
+
+struct Unique<T> {
+  value: &mut T
+}
+
+impl<T> Iterator for Box<T> {
+  type Item = T
+}
+
+impl<T> Wrapper for Box<T> {
+  type Output = Iterator::Item<Box<T>>
+}
+
+default impl<T> Show for Box<T> {
+  type Out = T
+}
+
+impl Show for Box<i32> {
+  type Out = String
+}
+
+impl !Send for Never {}
+
+pub async fn pinned(mut value: String) -> String {
+  pin(value)
+  let view = &value
+  await task()
+  print(view)
+  return value
+}
+
+pub fn loop_assignment(mut value: String, condition: bool) -> String {
+  while condition {
+    value = "updated"
+  }
+  return value
+}

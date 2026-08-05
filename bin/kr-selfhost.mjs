@@ -13,7 +13,7 @@ const queryType = take('--type', '');
 const queryAssoc = take('--assoc', '');
 
 function help() {
-  console.log('kr-selfhost source\nkr-selfhost frontend-source\nkr-selfhost trait-solver-source\nkr-selfhost cfg-region-source\nkr-selfhost borrow-checker-source\nkr-selfhost manifest\nkr-selfhost compile <file.kr> [-o output.mjs]\nkr-selfhost semantic <file.kr>\nkr-selfhost expression <expression>\nkr-selfhost pattern <pattern>\nkr-selfhost traits <file.kr> [--trait Trait --type Type --assoc Item]\nkr-selfhost cfg <file.kr>\nkr-selfhost borrow <file.kr>\nkr-selfhost bootstrap [directory]\nkr-selfhost verify [directory]');
+  console.log('kr-selfhost source\nkr-selfhost frontend-source\nkr-selfhost trait-solver-source\nkr-selfhost cfg-region-source\nkr-selfhost borrow-checker-source\nkr-selfhost manifest\nkr-selfhost compile <file.kr> [-o output.mjs]\nkr-selfhost semantic <file.kr>\nkr-selfhost expression <expression>\nkr-selfhost pattern <pattern>\nkr-selfhost traits <file.kr> [--trait Trait --type Type --assoc Item]\nkr-selfhost cfg <file.kr>\nkr-selfhost regions <file.kr>\nkr-selfhost borrow <file.kr>\nkr-selfhost bootstrap [directory]\nkr-selfhost verify [directory]');
 }
 
 try {
@@ -41,7 +41,7 @@ try {
     const source = await readFile(resolve(file), 'utf8');
     const result = await solveWithSelfHostedTraitSolver(source, { trait: queryTrait, type: queryType, assoc: queryAssoc });
     console.log(JSON.stringify(result, null, 2)); if (!result.ok) process.exitCode = 1;
-  } else if (command === 'cfg') {
+  } else if (command === 'cfg' || command === 'regions') {
     const file = args.shift(); if (!file) throw new Error('Source file required.');
     const source = await readFile(resolve(file), 'utf8');
     const result = await buildWithSelfHostedCfgRegion(source);
