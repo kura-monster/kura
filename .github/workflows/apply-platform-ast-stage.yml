@@ -30,6 +30,55 @@ jobs:
           base64 --decode /tmp/kura-platform-ast.b64 > /tmp/kura-platform-ast.tar.xz
           echo '2a86b2297b18054a3cf787cf89f8f33242304f2a829d8b14f216acc08012515b  /tmp/kura-platform-ast.tar.xz' | sha256sum -c -
           tar -xJf /tmp/kura-platform-ast.tar.xz -C .
+          python - <<'PYFIX'
+          from pathlib import Path
+
+          hardware = Path('lib/system-hardware.mjs')
+          source = hardware.read_text()
+          old = """export async function runHardwareQemuSmoke(options = {}) {
+            const outDir = options.outDir ?? 'build/hardware-qemu-smoke';
+            const build = await buildHardwareKernel(createCompleteHardwareKernelSource({ ...options, smoke: true }), { ...options, outDir, smoke: true });
+            const iso = await createBootableIso(build.plan.elf, { ...options, plan: build.plan, title: 'Kura Hardware Firmware Smoke' });
+            const run = await runNativeKernelQemuSmoke(build.plan.iso, { ...options, memory: options.memory ?? 256, cpus: options.cpus ?? 2, timeoutMs: options.timeoutMs ?? 30000, smokeExitCode: options.smokeExitCode ?? 0x10 });
+            return { build, iso, run, outputs: build.plan };
+          }
+          """
+          new = """export async function runHardwareQemuSmoke(options = {}) {
+            const outDir = path.resolve(options.outDir ?? 'build/hardware-qemu-smoke');
+            const build = await buildHardwareKernel(createCompleteHardwareKernelSource({ ...options, smoke: true }), { ...options, outDir, smoke: true });
+            const isoPlan = {
+              ...build.plan,
+              outDir,
+              isoRoot: path.join(outDir, 'iso-root'),
+              iso: path.join(outDir, 'kernel.iso'),
+            };
+            const iso = await createBootableIso(build.plan.elf, { ...options, plan: isoPlan, title: 'Kura Hardware Firmware Smoke' });
+            const run = await runNativeKernelQemuSmoke(isoPlan.iso, { ...options, memory: options.memory ?? 256, cpus: options.cpus ?? 2, timeoutMs: options.timeoutMs ?? 30000, smokeExitCode: options.smokeExitCode ?? 0x10 });
+            return { build, iso, run, outputs: isoPlan };
+          }
+          """
+          if old not in source:
+              raise SystemExit('runHardwareQemuSmoke block was not found')
+          hardware.write_text(source.replace(old, new))
+
+          test = Path('test/system-platform-firmware.mjs')
+          source = test.read_text()
+          source = source.replace(
+              "import { createPlatformFirmwareManifest, createPlatformFirmwareKernelSource, platformFirmwareSmokeTest, parsePciCapabilities } from '../lib/system-platform-firmware.mjs';",
+              "import { createPlatformFirmwareManifest, createPlatformFirmwareKernelSource, platformFirmwareSmokeTest, parsePciCapabilities } from '../lib/system-platform-firmware.mjs';\nimport { runHardwareQemuSmoke } from '../lib/system-hardware.mjs';",
+          )
+          source = source.replace(
+              "assert.equal(parsePciCapabilities(config).extended[0].id, 1);\nconsole.log('platform firmware tests passed');",
+              "assert.equal(parsePciCapabilities(config).extended[0].id, 1);\nconst qemu = await runHardwareQemuSmoke({ outDir: '/tmp/kura-platform-firmware-qemu-plan', dryRun: true });\nassert.equal(qemu.outputs.isoRoot, '/tmp/kura-platform-firmware-qemu-plan/iso-root');\nassert.equal(qemu.outputs.iso, '/tmp/kura-platform-firmware-qemu-plan/kernel.iso');\nassert.deepEqual(qemu.iso.step.args, ['-o', qemu.outputs.iso, qemu.outputs.isoRoot]);\nassert.equal(qemu.run.args.at(-1), qemu.outputs.iso);\nconsole.log('platform firmware tests passed');",
+          )
+          test.write_text(source)
+
+          persistent = Path('.github/workflows/qemu-hardware-smoke.yml')
+          persistent.write_text(persistent.read_text().replace(
+              'grub-pc-bin grub-common xorriso qemu-system-x86',
+              'grub-pc-bin grub-common xorriso mtools qemu-system-x86',
+          ))
+          PYFIX
           chmod +x bin/kr-hardware.mjs bin/kr-selfhost.mjs
 
       - name: Install compiler and QEMU toolchain
@@ -57,6 +106,7 @@ jobs:
           node bin/kr-system.mjs check /tmp/kura-platform-kernel.kr
           node bin/kr-hardware.mjs build --out-dir /tmp/kura-platform-kernel
           test -s /tmp/kura-platform-kernel/kernel.elf
+          grub-file --is-x86-multiboot2 /tmp/kura-platform-kernel/kernel.elf
           nm /tmp/kura-platform-kernel/kernel.elf > /tmp/kura-platform-symbols.txt
           grep -q 'kura_boot_entry' /tmp/kura-platform-symbols.txt
           grep -q 'kernel_main' /tmp/kura-platform-symbols.txt
@@ -65,14 +115,11 @@ jobs:
           grep -q 'pci_find_capability' /tmp/kura-platform-symbols.txt
           grep -q 'vtd_enable_translation' /tmp/kura-platform-symbols.txt
           grep -q 'amdvi_enable_translation' /tmp/kura-platform-symbols.txt
-          if ! node bin/kr-hardware.mjs qemu-smoke --out-dir /tmp/kura-qemu-platform --timeout-ms 45000 --memory 256 --cpus 2 --json > /tmp/kura-qemu-report.json; then
-            echo 'QEMU smoke failed; collecting GRUB/ISO diagnostics.' >&2
-            find /tmp/kura-qemu-platform -maxdepth 5 -type f -print -exec file {} \; || true
-            grub-file --is-x86-multiboot2 /tmp/kura-qemu-platform/kernel.elf || true
-            grub-mkrescue -v -o /tmp/kura-qemu-platform/debug.iso /tmp/kura-qemu-platform/iso-root || true
-            exit 1
-          fi
+          node bin/kr-hardware.mjs qemu-smoke --out-dir /tmp/kura-qemu-platform --timeout-ms 45000 --memory 256 --cpus 2 --json > /tmp/kura-qemu-report.json
           grep -q '"timedOut": false' /tmp/kura-qemu-report.json
+          test -s /tmp/kura-qemu-platform/kernel.iso
+          test -s /tmp/kura-qemu-platform/iso-root/boot/kernel.elf
+          test -s /tmp/kura-qemu-platform/iso-root/boot/grub/grub.cfg
           mkdir -p /tmp/kura-package
           npm pack --ignore-scripts --json --pack-destination /tmp/kura-package > /tmp/kura-pack.json
           test -s /tmp/kura-package/kura-lang-compiler-1.0.0.tgz
