@@ -1,1 +1,0 @@
-Final validation trigger for Kura-authored Polonius region facts, loop fixed points, variance, pinned generators, negative impls, specialization and recursive projections.
