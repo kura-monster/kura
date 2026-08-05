@@ -1,1 +1,0 @@
-Final validation trigger for the Kura-authored associated type solver and path-sensitive NLL borrow core.
