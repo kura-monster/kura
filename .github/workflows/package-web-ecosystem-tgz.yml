@@ -1,0 +1,88 @@
+name: Package complete Web ecosystem TGZ
+
+on:
+  pull_request:
+    branches:
+      - agent/web-ecosystem-package-validation-base
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build and verify npm TGZ
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install and test
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          npm test
+          npm audit --omit=dev --audit-level=high
+
+      - name: Create npm package
+        id: pack
+        run: |
+          set -euo pipefail
+          mkdir -p package-output
+          npm pack --json --pack-destination package-output > package-output/npm-pack.json
+          TGZ="$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('package-output/npm-pack.json','utf8'));process.stdout.write(x[0].filename)")"
+          test -f "package-output/$TGZ"
+          echo "tgz=$TGZ" >> "$GITHUB_OUTPUT"
+          sha256sum "package-output/$TGZ" > package-output/SHA256SUMS.txt
+          tar -tzf "package-output/$TGZ" > package-output/CONTENTS.txt
+          grep -qx 'package/package.json' package-output/CONTENTS.txt
+          grep -qx 'package/bin/kr.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/bin/kr-web.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/lib/compiler.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/lib/web-runtime.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/std/web.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/std/db.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/std/auth.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/std/openapi.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/std/ssr.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/std/ui.mjs' package-output/CONTENTS.txt
+
+      - name: Install generated TGZ and smoke test
+        run: |
+          set -euo pipefail
+          PREFIX="$RUNNER_TEMP/kura-package-test"
+          npm install --global --prefix "$PREFIX" "./package-output/${{ steps.pack.outputs.tgz }}"
+          export PATH="$PREFIX/bin:$PATH"
+          kr --version
+          kr-web --version
+          kr doctor
+          kr security status
+          node -e "import('@kura-lang/compiler/web-database').then(m=>{if(typeof m.createDatabase!=='function')process.exit(1)})" \
+            --input-type=module
+
+      - name: Record provenance
+        run: |
+          set -euo pipefail
+          cat > package-output/PROVENANCE.txt <<EOF
+          Repository: $GITHUB_REPOSITORY
+          Source commit: ${{ github.event.pull_request.head.sha }}
+          Node.js: $(node --version)
+          npm: $(npm --version)
+          Workflow run: $GITHUB_RUN_ID
+          Validation: npm test, npm audit, npm pack, tar content checks, global install, CLI smoke tests
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kura-web-ecosystem-complete-tgz
+          path: package-output/
+          if-no-files-found: error
+          retention-days: 7
