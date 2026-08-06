@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kura Browser Example</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #fafafa; color: #171717; font-family: Arial, sans-serif; }
+    main { width: min(440px, calc(100% - 40px)); padding: 32px; border: 1px solid #dedede; background: #fff; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { color: #606060; line-height: 1.6; }
+    output { display: block; margin: 28px 0; font-size: 56px; font-variant-numeric: tabular-nums; }
+    .actions { display: flex; gap: 8px; }
+    button { min-width: 96px; padding: 10px 14px; border: 1px solid #bdbdbd; background: #fff; cursor: pointer; }
+    button:hover { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Kura Browser</h1>
+    <p>This page is controlled by a Kura <code>.kr</code> module compiled to browser ESM.</p>
+    <output id="count">0</output>
+    <div class="actions">
+      <button id="decrement" type="button">Decrease</button>
+      <button id="increment" type="button">Increase</button>
+    </div>
+  </main>
+</body>
+</html>

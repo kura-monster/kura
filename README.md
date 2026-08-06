@@ -1,6 +1,6 @@
 # Kura v1.0.0
 
-Kura is a programming language and complete CLI toolchain for `.kr` files. The v1 line combines the compiler, Security Shield, friendly diagnostics, Velocity Engine, package management, batteries-included standard libraries, formatter, test runner, AI primitives, hot reload, standalone builds, and an editor-independent Language Server.
+Kura is a programming language and complete CLI toolchain for `.kr` files. The v1 line combines the compiler, Web application platform, Security Shield, friendly diagnostics, Velocity Engine, package management, batteries-included standard libraries, formatter, test runner, AI primitives, hot reload, standalone builds, and an editor-independent Language Server.
 
 ## Install
 
@@ -34,9 +34,37 @@ kr run
 kr test
 ```
 
+## Web project
+
+```bash
+kr-web new my-app --type browser
+cd my-app
+kr-web dev --open
+kr-web build
+kr-web preview
+```
+
+Create an HTTP API instead:
+
+```bash
+kr-web new my-api --type api
+cd my-api
+kr run --timeout-ms 0
+```
+
+The Web platform includes:
+
+- `std:web` HTTP routing, middleware, JSON/forms/multipart, static files, compression, SSE, WebSocket, TLS, and graceful shutdown
+- `std:http` timeout-aware HTTP client with size limits, JSON helpers, retries, exponential backoff, and `Retry-After`
+- `std:browser` DOM helpers, reactive signals, storage, browser fetch, WebSocket/EventSource clients, and SPA routing
+- `kr-web` browser/full-stack scaffolding, development, content-hashed production builds, integrity manifests, and preview serving
+
+See [Web platform](docs/WEB.md) and [Browser builds](docs/WEB_BUILD.md).
+
 ## Implemented v1 toolchain
 
 - Compiler and `kr` CLI
+- `kr-web` Web application workflow
 - Security Shield and `kr run --secure`
 - Friendly diagnostics with stable error codes
 - Velocity Engine and `kr bench`
@@ -65,7 +93,9 @@ Requirements: Node.js 20 or newer.
 
 ```bash
 npm test
+npm run test:web
 node bin/kr.mjs --version
+node bin/kr-web.mjs --version
 node bin/kr.mjs doctor
 ```
 
@@ -83,6 +113,8 @@ Strict mode is defense in depth rather than a complete operating-system sandbox.
 
 - [Security guide](docs/SECURITY.md)
 - [Diagnostics guide](docs/DIAGNOSTICS.md)
+- [Web platform](docs/WEB.md)
+- [Browser builds](docs/WEB_BUILD.md)
 - [Official documentation](https://kr.klyn.site/docs)
 - [Download Center](https://kr.klyn.site/download)
 - [VS Code experiment archive](https://kr.klyn.site/vscode)

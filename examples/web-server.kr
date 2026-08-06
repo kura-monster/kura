@@ -1,0 +1,45 @@
+import {
+  createApp,
+  object,
+  json,
+  securityHeaders,
+  cors,
+  compression,
+  staticFiles
+} from std:"web";
+import { getEnv } from std:"env";
+
+fn home(context) {
+  return json(object(
+    "message", "Hello from Kura Web",
+    "path", context.path,
+    "requestId", context.requestId
+  ));
+}
+
+fn user(context) {
+  return json(object(
+    "id", context.param("id"),
+    "page", context.query("page", "1")
+  ));
+}
+
+async fn echo(context) {
+  let input = await context.json();
+  return json(object("received", input));
+}
+
+async fn main() {
+  let app = createApp();
+  app.use(securityHeaders());
+  app.use(cors());
+  app.use(compression());
+  app.get("/", home);
+  app.get("/users/:id", user);
+  app.post("/echo", echo);
+  app.use(staticFiles("public"));
+
+  let port = int(getEnv("PORT", "3000"));
+  await app.listen(port, "0.0.0.0");
+  println("Kura Web listening on port " + str(port));
+}
