@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p package-output
-          npm pack --json --pack-destination package-output > package-output/npm-pack.json
+          npm pack --json --ignore-scripts --pack-destination package-output > package-output/npm-pack.json
           TGZ="$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('package-output/npm-pack.json','utf8'));process.stdout.write(x[0].filename)")"
           test -f "package-output/$TGZ"
           echo "tgz=$TGZ" >> "$GITHUB_OUTPUT"
@@ -46,6 +46,7 @@ jobs:
           grep -qx 'package/package.json' package-output/CONTENTS.txt
           grep -qx 'package/bin/kr.mjs' package-output/CONTENTS.txt
           grep -qx 'package/bin/kr-web.mjs' package-output/CONTENTS.txt
+          grep -qx 'package/bin/kr-system.mjs' package-output/CONTENTS.txt
           grep -qx 'package/lib/compiler.mjs' package-output/CONTENTS.txt
           grep -qx 'package/lib/web-runtime.mjs' package-output/CONTENTS.txt
           grep -qx 'package/std/web.mjs' package-output/CONTENTS.txt
@@ -59,14 +60,15 @@ jobs:
         run: |
           set -euo pipefail
           PREFIX="$RUNNER_TEMP/kura-package-test"
-          npm install --global --prefix "$PREFIX" "./package-output/${{ steps.pack.outputs.tgz }}"
+          npm install --global --ignore-scripts --prefix "$PREFIX" "./package-output/${{ steps.pack.outputs.tgz }}"
           export PATH="$PREFIX/bin:$PATH"
           kr --version
           kr-web --version
+          kr-system --version
           kr doctor
           kr security status
-          node -e "import('@kura-lang/compiler/web-database').then(m=>{if(typeof m.createDatabase!=='function')process.exit(1)})" \
-            --input-type=module
+          MODULE="$PREFIX/lib/node_modules/@kura-lang/compiler/lib/web-database.mjs"
+          node --input-type=module -e "import { pathToFileURL } from 'node:url'; const m = await import(pathToFileURL(process.argv[1])); if (typeof m.createDatabase !== 'function') process.exit(1);" "$MODULE"
 
       - name: Record provenance
         run: |
@@ -77,7 +79,7 @@ jobs:
           Node.js: $(node --version)
           npm: $(npm --version)
           Workflow run: $GITHUB_RUN_ID
-          Validation: npm test, npm audit, npm pack, tar content checks, global install, CLI smoke tests
+          Validation: npm test, npm audit, npm pack, required tar entries, isolated global install, kr/kr-web/kr-system/doctor/security smoke tests
           EOF
 
       - uses: actions/upload-artifact@v4
