@@ -1,0 +1,10 @@
+-- up
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(254) NOT NULL UNIQUE,
+  created_at VARCHAR(64) NOT NULL
+);
+
+-- down
+DROP TABLE users;

@@ -6,6 +6,9 @@ import { spawn } from 'node:child_process';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserApp, previewBrowserBuild, KuraWebBuildError } from '../lib/web-builder.mjs';
+import { createDatabase, loadMigrations, migrate, rollback } from '../lib/web-database.mjs';
+import { generateDeployment, deploymentDoctor } from '../lib/web-deploy.mjs';
+import { loadE2EConfig, runBrowserChecks } from '../lib/web-e2e.mjs';
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -18,6 +21,10 @@ try {
   else if (command === 'build') await build(args);
   else if (command === 'preview') await preview(args);
   else if (command === 'dev') await dev(args);
+  else if (command === 'db') await databaseCommand(args);
+  else if (command === 'deploy') await deployCommand(args);
+  else if (command === 'doctor') await doctorCommand(args);
+  else if (command === 'e2e' || command === 'test') await e2eCommand(args);
   else throw new KuraWebBuildError(`Unknown kr-web command '${command}'.`, { code: 'KR-WEB-CLI-0001', hint: 'Run kr-web help.' });
 } catch (error) {
   console.error(`Kura Web error [${error?.code ?? 'KR-WEB-CLI-0000'}]: ${error?.message ?? error}`);
@@ -35,6 +42,10 @@ Usage: kr-web <command> [options]
   dev [file]        Start browser hot reload through kr dev
   build [file]      Build a production browser artifact
   preview           Preview the production artifact
+  db <action>       Create, inspect, apply, or rollback SQL migrations
+  deploy <target>   Generate Docker, Render, Fly, Railway, or systemd files
+  doctor            Check Web production readiness
+  e2e               Run Playwright browser checks against a preview build
   version           Print the Web tool version
 
 Options:
@@ -46,6 +57,14 @@ Options:
   --no-clean           Keep existing output files
   --no-optimize        Disable compiler optimization
   --open               Open the development page
+  --url <database-url>  Override DATABASE_URL for db commands
+  --driver <name>       postgres, mysql, sqlite, turso, or memory
+  --migrations <dir>    Migration directory (default: migrations)
+  --force               Overwrite generated deployment files
+  --bundle              Bundle browser npm packages with project esbuild
+  --sourcemap           Emit browser source maps
+  --no-splitting        Disable dynamic chunk splitting
+  --browser <name>      chromium, firefox, or webkit for E2E
 `);
 }
 
@@ -63,6 +82,10 @@ async function build(argv) {
     optimize: !argv.includes('--no-optimize'),
     compact: !argv.includes('--no-optimize'),
     title: config.title ?? path.basename(projectRoot),
+    bundle: argv.includes('--bundle'),
+    sourcemap: argv.includes('--sourcemap') || argv.includes('--bundle'),
+    splitting: !argv.includes('--no-splitting'),
+    minify: !argv.includes('--no-minify'),
   });
   console.log(`Built Kura browser application\nOutput: ${path.relative(projectRoot, report.outDir) || report.outDir}\nApplication: ${report.manifest.application}\nFiles: ${report.manifest.files.length + 1}\nBytes: ${report.manifest.totalBytes}\nSHA-256: ${report.manifest.applicationSha256}`);
 }
@@ -94,6 +117,96 @@ async function dev(argv) {
   const child = spawn(process.execPath, childArgs, { cwd: projectRoot, env: process.env, stdio: 'inherit', windowsHide: true });
   const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', value => resolve(value ?? 1)); });
   process.exitCode = code;
+}
+
+
+async function databaseCommand(argv) {
+  const action = argv[0] ?? 'status';
+  const projectRoot = path.resolve(process.cwd());
+  const migrationsDir = path.resolve(projectRoot, option(argv, '--migrations', 'migrations'));
+  if (action === 'create') {
+    const name = argv.find((value, index) => index > 0 && !value.startsWith('-') && argv[index - 1] !== '--migrations') ?? 'migration';
+    const safe = String(name).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'migration';
+    await mkdir(migrationsDir, { recursive: true, mode: 0o700 });
+    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+    const file = path.join(migrationsDir, `${stamp}-${safe}.sql`);
+    if (await exists(file)) throw new KuraWebBuildError(`Migration already exists: ${file}`, { code: 'KR-WEB-DB-0001' });
+    await writeFile(file, `-- up\n\n-- Write forward migration SQL here.\n\n-- down\n\n-- Write rollback SQL here.\n`, 'utf8');
+    console.log(`Created migration ${path.relative(projectRoot, file)}`);
+    return;
+  }
+  const url = option(argv, '--url', process.env.DATABASE_URL ?? '');
+  const driver = option(argv, '--driver', undefined);
+  if (!url && !driver) throw new KuraWebBuildError('DATABASE_URL or --url is required for database commands.', { code: 'KR-WEB-DB-0002', hint: 'Example: kr-web db status --url sqlite:./app.db' });
+  const database = createDatabase({ url: url || undefined, driver, authToken: process.env.DATABASE_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN });
+  try {
+    const migrations = await loadMigrations(migrationsDir);
+    if (action === 'migrate') {
+      const report = await migrate(database, migrations, { dryRun: argv.includes('--dry-run') });
+      console.log(report.dryRun ? `Pending migrations (${report.pending.length})\n${report.pending.join('\n') || 'None'}` : `Applied ${report.applied.length} migration(s)\n${report.applied.join('\n') || 'Database is current.'}`);
+    } else if (action === 'status') {
+      const report = await migrate(database, migrations, { dryRun: true });
+      console.log(`Database driver: ${database.driver}\nMigration files: ${migrations.length}\nPending: ${report.pending.length}\n${report.pending.join('\n') || 'Database is current.'}`);
+    } else if (action === 'rollback') {
+      const steps = Math.max(1, Number(option(argv, '--steps', '1')) || 1);
+      const report = await rollback(database, migrations, { steps });
+      console.log(`Rolled back ${report.rolledBack.length} migration(s)\n${report.rolledBack.join('\n') || 'Nothing to roll back.'}`);
+    } else {
+      throw new KuraWebBuildError(`Unknown db action '${action}'.`, { code: 'KR-WEB-DB-0003', hint: 'Use create, status, migrate, or rollback.' });
+    }
+  } finally {
+    await database.close();
+  }
+}
+
+async function deployCommand(argv) {
+  const target = argv[0] ?? 'docker';
+  const report = await generateDeployment({
+    projectRoot: process.cwd(),
+    target,
+    name: option(argv, '--name', path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9-]/g, '-')),
+    port: Number(option(argv, '--port', process.env.PORT ?? '3000')),
+    startCommand: option(argv, '--start-command', 'kr run --timeout-ms 0'),
+    healthPath: option(argv, '--health-path', '/health'),
+    nodeVersion: option(argv, '--node-version', '22'),
+    region: option(argv, '--region', 'nrt'),
+    force: argv.includes('--force'),
+  });
+  console.log(`Generated ${report.target} deployment\n${report.files.map(item => `  ${item.file}  ${item.bytes} bytes`).join('\n')}`);
+}
+
+async function doctorCommand(argv) {
+  const requiredEnv = String(option(argv, '--required-env', '--config', '--browser', '--timeout-ms', '--screenshots', '')).split(',').map(value => value.trim()).filter(Boolean);
+  const report = await deploymentDoctor({ projectRoot: process.cwd(), requiredEnv, allowEnvFiles: argv.includes('--allow-env-files') });
+  for (const item of report.findings) console.log(`${item.severity.toUpperCase()} ${item.code} ${item.message}`);
+  console.log(`\nKura Web doctor: ${report.ok ? 'ready' : 'not ready'} (${report.errors} errors, ${report.warnings} warnings)`);
+  if (!report.ok) process.exitCode = 1;
+}
+
+
+async function e2eCommand(argv) {
+  const projectRoot = path.resolve(process.cwd());
+  const config = await readWebConfig(projectRoot);
+  const root = path.resolve(projectRoot, option(argv, '--out-dir', config.outDir ?? 'dist'));
+  const previewServer = await previewBrowserBuild({ root, host: option(argv, '--host', '127.0.0.1'), port: numberOption(argv, '--port', 0), spa: !argv.includes('--no-spa') });
+  try {
+    const e2e = await loadE2EConfig(path.resolve(projectRoot, option(argv, '--config', 'kura-e2e.json')));
+    const report = await runBrowserChecks({
+      projectRoot,
+      baseUrl: previewServer.url,
+      browser: option(argv, '--browser', e2e.browser ?? 'chromium'),
+      checks: e2e.checks,
+      headless: !argv.includes('--headed'),
+      timeoutMs: Number(option(argv, '--timeout-ms', e2e.timeoutMs ?? '30000')),
+      failFast: argv.includes('--fail-fast'),
+      screenshotDir: option(argv, '--screenshots', undefined),
+    });
+    for (const result of report.results) console.log(`${result.status === 'passed' ? 'PASS' : 'FAIL'} ${result.name} (${result.durationMs.toFixed(1)} ms)${result.error ? ` — ${result.error}` : ''}`);
+    console.log(`\nE2E: ${report.passed} passed, ${report.failed} failed in ${report.browser}.`);
+    if (!report.ok) process.exitCode = 1;
+  } finally {
+    await previewServer.close();
+  }
 }
 
 async function createProject(name, argv) {
@@ -148,7 +261,7 @@ async function readWebConfig(root) {
   return config;
 }
 
-function firstValue(argv) { const valueOptions = new Set(['--type', '--public-dir', '--out-dir', '--host', '--port']); return argv.find((value, index) => !value.startsWith('-') && (index === 0 || !valueOptions.has(argv[index - 1]))); }
+function firstValue(argv) { const valueOptions = new Set(['--type', '--public-dir', '--out-dir', '--host', '--port', '--url', '--driver', '--migrations', '--steps', '--name', '--start-command', '--health-path', '--node-version', '--region', '--required-env', '--config', '--browser', '--timeout-ms', '--screenshots']); return argv.find((value, index) => !value.startsWith('-') && (index === 0 || !valueOptions.has(argv[index - 1]))); }
 function hasOption(argv, name) { return argv.includes(name); }
 function option(argv, name, fallback = undefined) { const index = argv.indexOf(name); if (index < 0) return fallback; const value = argv[index + 1]; if (!value || value.startsWith('--')) throw new KuraWebBuildError(`${name} needs a value.`, { code: 'KR-WEB-CLI-0030' }); return value; }
 function numberOption(argv, name, fallback) { const value = Number(option(argv, name, fallback)); if (!Number.isInteger(value) || value < 0 || value > 65535) throw new KuraWebBuildError(`${name} must be from 0 to 65535.`, { code: 'KR-WEB-CLI-0031' }); return value; }
