@@ -24,8 +24,26 @@ import {
   options as httpOptions,
   query as httpQuery,
 } from '../std/http.mjs';
+import {
+  record,
+  escapeHtml,
+  signal,
+  computed,
+  queryString,
+} from '../std/browser.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const browserRecord = record('name', 'Kura', 'version', 1);
+assert.equal(browserRecord.name, 'Kura');
+assert.equal(escapeHtml('<script>"x"</script>'), '&lt;script&gt;&quot;x&quot;&lt;/script&gt;');
+const countSignal = signal(2);
+const doubledSignal = computed([countSignal], value => value * 2);
+assert.equal(doubledSignal.get(), 4);
+countSignal.set(5);
+assert.equal(doubledSignal.get(), 10);
+doubledSignal.dispose();
+assert.equal(queryString('q', 'kura web', 'page', 2), 'q=kura+web&page=2');
+
 const staticRoot = await mkdtemp(path.join(tmpdir(), 'kura-web-test-'));
 await writeFile(path.join(staticRoot, 'index.html'), '<h1>Kura Web</h1>');
 await writeFile(path.join(staticRoot, 'range.txt'), 'abcdefghijklmnopqrstuvwxyz');
@@ -67,10 +85,7 @@ try {
   });
   const retryListener = await retryApp.listen(0, '127.0.0.1');
   try {
-    const retryValue = await getJson(
-      `http://127.0.0.1:${retryListener.port}/value`,
-      httpOptions('retries', 2, 'retryDelayMs', 1, 'query', httpQuery('x', '1')),
-    );
+    const retryValue = await getJson(`http://127.0.0.1:${retryListener.port}/value`, httpOptions('retries', 2, 'retryDelayMs', 1, 'query', httpQuery('x', '1')));
     assert.equal(retryValue.ok, true);
     assert.equal(retryCount, 2);
   } finally {
@@ -131,6 +146,25 @@ async fn main() {
   assert.match(compiled.code, /createApp/);
   assert.match(compiled.code, /async function health/);
   assert.match(compiled.code, /web\.get\("\/health", health\)/);
+
+  const browserSource = `
+import { signal, queryString } from std:"browser";
+
+fn main() {
+  let count = signal(1);
+  count.set(2);
+  println(queryString("count", count.get()));
+}
+`;
+  const browserCompiled = compile(browserSource, {
+    file: 'browser-example.kr',
+    stdlibRoot: path.join(root, 'std'),
+    autoRun: false,
+    target: 'browser',
+  });
+  assert.match(browserCompiled.code, /browser\.mjs/);
+  assert.match(browserCompiled.code, /count\.set\(2\)/);
+  assert.match(browserCompiled.code, /queryString\("count", count\.get\(\)\)/);
 } finally {
   await app.close();
   await rm(staticRoot, { recursive: true, force: true });
