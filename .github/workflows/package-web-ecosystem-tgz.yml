@@ -64,7 +64,7 @@ jobs:
           export PATH="$PREFIX/bin:$PATH"
           kr --version
           kr-web --version
-          kr-system --version
+          kr-system architecture --json
           kr doctor
           kr security status
           MODULE="$PREFIX/lib/node_modules/@kura-lang/compiler/lib/web-database.mjs"
