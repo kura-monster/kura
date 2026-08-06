@@ -98,9 +98,9 @@
   },
   "homepage": "https://kr.klyn.site/docs",
   "scripts": {
-    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/web.mjs && node test/web-build.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs",
-    "test:web": "node test/web.mjs && node test/web-build.mjs",
-    "test:security": "node test/security.mjs",
+    "test": "node test/cli-syntax.mjs && node test/smoke.mjs && node test/velocity.mjs && node test/diagnostics.mjs && node test/security.mjs && node test/web-security.mjs && node test/web.mjs && node test/web-build.mjs && node test/system.mjs && node test/system-source.mjs && node test/system-native.mjs && node test/system-next.mjs && node test/system-kernel-runtime.mjs",
+    "test:web": "node test/web-security.mjs && node test/web.mjs && node test/web-build.mjs",
+    "test:security": "node test/security.mjs && node test/web-security.mjs",
     "test:diagnostics": "node test/diagnostics.mjs",
     "check:package": "npm pack --dry-run --json",
     "prepack": "npm test",
