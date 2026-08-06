@@ -1,0 +1,29 @@
+import {
+  ready,
+  on,
+  setText,
+  signal,
+  queryString
+} from std:"browser";
+
+let count = signal(0);
+
+fn render(value, previous) {
+  setText("#count", value);
+}
+
+fn increment(event) {
+  count.set(count.get() + 1);
+}
+
+fn decrement(event) {
+  count.set(count.get() - 1);
+}
+
+async fn main() {
+  await ready();
+  count.subscribe(render);
+  on("#increment", "click", increment);
+  on("#decrement", "click", decrement);
+  println(queryString("application", "kura-browser"));
+}
