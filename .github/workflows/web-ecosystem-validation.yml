@@ -1,0 +1,37 @@
+name: Web ecosystem validation
+
+on:
+  pull_request:
+    branches:
+      - agent/web-ecosystem-validation-base
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-ecosystem-${{ github.event.pull_request.number }}-${{ matrix.os }}-${{ matrix.node }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22, 24]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm pack --dry-run --json
+      - run: node bin/kr.mjs --version
+      - run: node bin/kr.mjs doctor
+      - run: node bin/kr.mjs security status
+      - run: node bin/kr-web.mjs --version
