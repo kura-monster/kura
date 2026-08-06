@@ -29,7 +29,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .kura-transfer/web.part* > /tmp/web-ecosystem.b64
+          cat \
+            .kura-transfer/web.part01 \
+            .kura-transfer/web.part02 \
+            .kura-transfer/web.part03 \
+            .kura-transfer/web.part04.fix01 \
+            .kura-transfer/web.part04.fix02 \
+            .kura-transfer/web.part04.fix03 \
+            .kura-transfer/web.part04.fix04 \
+            .kura-transfer/web.part04.fix05 \
+            .kura-transfer/web.part05 \
+            .kura-transfer/web.part06 \
+            .kura-transfer/web.part07 \
+            .kura-transfer/web.part08 \
+            .kura-transfer/web.part09 \
+            .kura-transfer/web.part10.fix01 \
+            .kura-transfer/web.part10.fix02 \
+            .kura-transfer/web.part10.fix03 \
+            .kura-transfer/web.part10.fix04 \
+            .kura-transfer/web.part10.fix05 \
+            .kura-transfer/web.part11 \
+            .kura-transfer/web.part12.fix01 \
+            .kura-transfer/web.part12.fix02 \
+            .kura-transfer/web.part12.fix03 \
+            .kura-transfer/web.part12.fix04 \
+            .kura-transfer/web.part12.fix05 \
+            > /tmp/web-ecosystem.b64
           base64 --decode /tmp/web-ecosystem.b64 > /tmp/web-ecosystem.tar.gz
           echo "0e25a0b5b6837e5526abeece271fca23d1b435302e72810b5be15825ab09dbee  /tmp/web-ecosystem.tar.gz" | sha256sum --check --strict
           tar -tzf /tmp/web-ecosystem.tar.gz
