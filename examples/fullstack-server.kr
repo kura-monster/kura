@@ -1,0 +1,24 @@
+import { createApp, object, json, securityHeaders, cors } from std:"web";
+import { connect } from std:"db";
+import { getEnv } from std:"env";
+
+let database = connect(getEnv("DATABASE_URL", "sqlite:./app.db"));
+
+fn health(context) {
+  return json(object("status", "ok", "requestId", context.requestId));
+}
+
+async fn listUsers(context) {
+  let rows = await database.table("users").select("id", "name").limit(100).all();
+  return json(rows);
+}
+
+async fn main() {
+  let app = createApp();
+  app.use(securityHeaders());
+  app.use(cors());
+  app.get("/health", health);
+  app.get("/api/users", listUsers);
+  let port = int(getEnv("PORT", "3000"));
+  await app.listen(port, "0.0.0.0");
+}

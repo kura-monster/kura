@@ -1,0 +1,13 @@
+{
+  "browser": "chromium",
+  "timeoutMs": 30000,
+  "checks": [
+    {
+      "name": "browser application loads",
+      "path": "/",
+      "status": 200,
+      "selector": "#app",
+      "noConsoleErrors": true
+    }
+  ]
+}
